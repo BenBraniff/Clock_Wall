@@ -347,6 +347,111 @@ button {
   grid-column: span 2;
   background: linear-gradient(145deg, var(--lime) 0 49.5%, #11161c 50%);
 }
+.temperature-panel {
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding: 16px 17px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #0e1318aa;
+}
+.temperature-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 20px;
+}
+.temperature-heading h2 {
+  margin: 4px 0 0;
+  color: var(--paper);
+  font-size: 15px;
+  font-weight: 400;
+}
+.temperature-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 12px;
+  color: #69767b;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+.temperature-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.temperature-legend i {
+  display: inline-block;
+  width: 18px;
+  border-top: 1px solid #667277;
+}
+.temperature-legend .current {
+  color: var(--paper);
+}
+.temperature-legend .current i {
+  border-top: 2px solid var(--paper);
+}
+.temperature-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 12px;
+  overflow: visible;
+}
+.temperature-grid {
+  stroke: #273238;
+  stroke-width: 0.7;
+}
+.temperature-grid.horizontal {
+  stroke: #344047;
+  stroke-dasharray: 2 4;
+}
+.temperature-axis-label {
+  fill: #728087;
+  font-family: inherit;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+}
+.temperature-line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.temperature-line.historical {
+  stroke: #566166;
+  stroke-width: 1.4;
+}
+.temperature-line.current {
+  stroke: var(--paper);
+  stroke-width: 2.4;
+}
+.temperature-current-point {
+  fill: var(--panel);
+  stroke: var(--paper);
+  stroke-width: 1.5;
+}
+.temperature-status {
+  min-height: 221px;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  color: #748187;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+}
+.temperature-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #69767b;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+}
+.temperature-caption small {
+  color: #87949a;
+  font-size: inherit;
+}
 .location-card {
   grid-column: 2;
   grid-row: 1;

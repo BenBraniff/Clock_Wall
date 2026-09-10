@@ -95,11 +95,26 @@ const getYearProgress = (date: Date) => {
   return Math.round(((date.getTime() - start) / (end - start)) * 100);
 };
 
-const locations = [
+type Location = {
+  name: string;
+  latitude: string;
+  longitude: string;
+  latitudeValue: number;
+  longitudeValue: number;
+  sunrise: string;
+  sunset: string;
+  solarNoon: string;
+  daylight: string;
+  timeZone: string;
+};
+
+const locations: Location[] = [
   {
     name: "New York, NY",
     latitude: "40° 42′ 46″ N",
     longitude: "74° 00′ 21″ W",
+    latitudeValue: 40.7128,
+    longitudeValue: -74.006,
     sunrise: "06:24",
     sunset: "19:18",
     solarNoon: "13:04",
@@ -110,6 +125,8 @@ const locations = [
     name: "London, UK",
     latitude: "51° 30′ 26″ N",
     longitude: "00° 07′ 39″ W",
+    latitudeValue: 51.5074,
+    longitudeValue: -0.1278,
     sunrise: "06:17",
     sunset: "19:32",
     solarNoon: "12:54",
@@ -120,6 +137,8 @@ const locations = [
     name: "Tokyo, Japan",
     latitude: "35° 41′ 23″ N",
     longitude: "139° 41′ 30″ E",
+    latitudeValue: 35.6762,
+    longitudeValue: 139.6503,
     sunrise: "05:18",
     sunset: "18:01",
     solarNoon: "11:40",
@@ -130,6 +149,8 @@ const locations = [
     name: "Sydney, Australia",
     latitude: "33° 52′ 04″ S",
     longitude: "151° 12′ 26″ E",
+    latitudeValue: -33.8688,
+    longitudeValue: 151.2093,
     sunrise: "05:59",
     sunset: "17:37",
     solarNoon: "11:48",
@@ -137,6 +158,206 @@ const locations = [
     timeZone: "Australia/Sydney",
   },
 ];
+
+type TemperaturePoint = { date: string; temperature: number };
+type TemperatureSeries = { year: number; points: TemperaturePoint[] };
+
+const getDayNumber = (date: string) => {
+  const value = new Date(`${date}T12:00:00Z`);
+  return Math.floor(
+    (Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()) -
+      Date.UTC(value.getUTCFullYear(), 0, 1)) /
+      86400000,
+  );
+};
+
+const smoothTemperatures = (points: TemperaturePoint[]) =>
+  points.map((point, index) => {
+    const window = points.slice(Math.max(0, index - 3), index + 4);
+    return {
+      ...point,
+      temperature:
+        window.reduce((sum, item) => sum + item.temperature, 0) / window.length,
+    };
+  });
+
+const fetchTemperatureHistory = async (location: Location) => {
+  const currentYear = new Date().getFullYear();
+  const today = new Date().toISOString().slice(0, 10);
+  const years = [currentYear - 2, currentYear - 1, currentYear];
+  const results = await Promise.all(
+    years.map(async (year) => {
+      const endDate = year === currentYear ? today : `${year}-12-31`;
+      const params = new URLSearchParams({
+        latitude: String(location.latitudeValue),
+        longitude: String(location.longitudeValue),
+        start_date: `${year}-01-01`,
+        end_date: endDate,
+        daily: "temperature_2m_mean",
+        temperature_unit: "fahrenheit",
+        timezone: "auto",
+      });
+      const response = await fetch(
+        `https://archive-api.open-meteo.com/v1/archive?${params}`,
+      );
+      if (!response.ok) throw new Error("Temperature history unavailable");
+      const data = (await response.json()) as {
+        daily?: { time?: string[]; temperature_2m_mean?: (number | null)[] };
+      };
+      const dates = data.daily?.time ?? [];
+      const temperatures = data.daily?.temperature_2m_mean ?? [];
+      return {
+        year,
+        points: smoothTemperatures(
+          dates.flatMap((date, index) => {
+            const temperature = temperatures[index];
+            return temperature == null ? [] : [{ date, temperature }];
+          }),
+        ),
+      };
+    }),
+  );
+  return results;
+};
+
+function TemperatureHistoryPanel({
+  location,
+}: {
+  location: Location;
+}) {
+  const [series, setSeries] = useState<TemperatureSeries[]>([]);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">(
+    "loading",
+  );
+  const [currentYear] = useState(() => new Date().getFullYear());
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchTemperatureHistory(location)
+      .then((history) => {
+        if (!controller.signal.aborted) {
+          setSeries(history);
+          setStatus("ready");
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setStatus("error");
+      });
+    return () => controller.abort();
+  }, [location]);
+
+  const chart = { left: 42, right: 708, top: 22, bottom: 218 };
+  const values = series.flatMap((item) =>
+    item.points.map((point) => point.temperature),
+  );
+  const minimum = values.length ? Math.floor(Math.min(...values) / 5) * 5 : 0;
+  const maximum = values.length ? Math.ceil(Math.max(...values) / 5) * 5 : 80;
+  const range = Math.max(10, maximum - minimum);
+  const xForDate = (date: string) =>
+    chart.left + (getDayNumber(date) / 365) * (chart.right - chart.left);
+  const yForTemperature = (temperature: number) =>
+    chart.bottom -
+    ((temperature - minimum) / range) * (chart.bottom - chart.top);
+  const pathForSeries = (item: TemperatureSeries) =>
+    item.points
+      .map(
+        (point, index) =>
+          `${index === 0 ? "M" : "L"}${xForDate(point.date).toFixed(1)} ${yForTemperature(point.temperature).toFixed(1)}`,
+      )
+      .join(" ");
+  const currentSeries = series.find((item) => item.year === currentYear);
+  const currentPoint = currentSeries?.points.at(-1);
+  const monthLabels = [
+    ["JAN", 0],
+    ["FEB", 31],
+    ["MAR", 59],
+    ["APR", 90],
+    ["MAY", 120],
+    ["JUN", 151],
+    ["JUL", 181],
+    ["AUG", 212],
+    ["SEP", 243],
+    ["OCT", 273],
+    ["NOV", 304],
+    ["DEC", 334],
+  ] as const;
+
+  return (
+    <article className="temperature-panel">
+      <div className="temperature-heading">
+        <div>
+          <p className="card-label">DAILY AVERAGE TEMPERATURE</p>
+          <h2>{location.name}</h2>
+        </div>
+        <div className="temperature-legend" aria-label="Chart legend">
+          {series.map((item, index) => (
+            <span key={item.year} className={index === 2 ? "current" : ""}>
+              <i /> {item.year}
+            </span>
+          ))}
+        </div>
+      </div>
+      {status === "loading" && (
+        <p className="temperature-status">LOADING CLIMATE RECORD</p>
+      )}
+      {status === "error" && (
+        <p className="temperature-status">
+          TEMPERATURE HISTORY IS CURRENTLY UNAVAILABLE
+        </p>
+      )}
+      {status === "ready" && (
+        <svg
+          className="temperature-chart"
+          viewBox="0 0 750 270"
+          role="img"
+          aria-label={`Daily average temperature history for ${location.name}`}
+        >
+          {monthLabels.map(([label, day]) => {
+            const x = chart.left + (day / 365) * (chart.right - chart.left);
+            return (
+              <g key={label}>
+                <line className="temperature-grid" x1={x} y1={chart.top} x2={x} y2={chart.bottom} />
+                <text className="temperature-axis-label" x={x} y="244" textAnchor="middle">
+                  {label}
+                </text>
+              </g>
+            );
+          })}
+          {[minimum, minimum + range / 2, maximum].map((value) => {
+            const y = yForTemperature(value);
+            return (
+              <g key={value}>
+                <line className="temperature-grid horizontal" x1={chart.left} y1={y} x2={chart.right} y2={y} />
+                <text className="temperature-axis-label" x="3" y={y + 3}>
+                  {Math.round(value)}°
+                </text>
+              </g>
+            );
+          })}
+          {series.map((item, index) => (
+            <path
+              key={item.year}
+              className={`temperature-line ${index === 2 ? "current" : "historical"}`}
+              d={pathForSeries(item)}
+            />
+          ))}
+          {currentPoint && (
+            <circle
+              className="temperature-current-point"
+              cx={xForDate(currentPoint.date)}
+              cy={yForTemperature(currentPoint.temperature)}
+              r="5"
+            />
+          )}
+        </svg>
+      )}
+      <div className="temperature-caption">
+        <span>7-DAY MOVING AVERAGE</span>
+        <small>{currentPoint ? `CURRENT THROUGH ${currentPoint.date}` : "JAN — DEC"}</small>
+      </div>
+    </article>
+  );
+}
 
 function MetricCard({
   eyebrow,
@@ -365,6 +586,8 @@ function App() {
         setLocation({
           ...locations[0],
           name: "Current position",
+            latitudeValue: coords.latitude,
+            longitudeValue: coords.longitude,
           latitude: `${Math.abs(coords.latitude).toFixed(2)}° ${coords.latitude >= 0 ? "N" : "S"}`,
           longitude: `${Math.abs(coords.longitude).toFixed(2)}° ${coords.longitude >= 0 ? "E" : "W"}`,
         }),
@@ -380,6 +603,8 @@ function App() {
           setLocation({
             ...locations[0],
             name: "Current position",
+            latitudeValue: coords.latitude,
+            longitudeValue: coords.longitude,
             latitude: `${Math.abs(coords.latitude).toFixed(2)}° ${coords.latitude >= 0 ? "N" : "S"}`,
             longitude: `${Math.abs(coords.longitude).toFixed(2)}° ${coords.longitude >= 0 ? "E" : "W"}`,
           }),
@@ -499,6 +724,7 @@ function App() {
           </section>
           <section className="dashboard-grid">
             <SolarPath now={now} location={location} />
+            <TemperatureHistoryPanel location={location} />
             <article className="metric-card solar-times-card">
               <p className="card-label">DAYLIGHT WINDOW</p>
               <div className="solar-times">
