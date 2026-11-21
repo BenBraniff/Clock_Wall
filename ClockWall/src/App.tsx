@@ -4,6 +4,11 @@ import "./App.css";
 const formatDate = (date: Date, options: Intl.DateTimeFormatOptions) =>
   new Intl.DateTimeFormat(undefined, options).format(date);
 
+const toDateTimeLocalValue = (date: Date) => {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
 const getMinutesInTimeZone = (date: Date, timeZone: string) => {
   const parts = new Intl.DateTimeFormat("en-US", {
     hour: "2-digit",
@@ -35,6 +40,33 @@ const getDayOfYearInTimeZone = (date: Date, timeZone: string) => {
   return Math.floor(
     (Date.UTC(year, month - 1, day) - Date.UTC(year, 0, 0)) / 86400000,
   );
+};
+
+const getDateKeyInTimeZone = (date: Date, timeZone: string) => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+    timeZone,
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  return `${year}-${month?.padStart(2, "0")}-${day?.padStart(2, "0")}`;
+};
+
+const getDatePartsInTimeZone = (date: Date, timeZone: string) => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+    timeZone,
+  }).formatToParts(date);
+  return {
+    year: Number(parts.find((part) => part.type === "year")?.value),
+    month: Number(parts.find((part) => part.type === "month")?.value),
+    day: Number(parts.find((part) => part.type === "day")?.value),
+  };
 };
 
 const getAnalemmaPoint = (dayOfYear: number) => {
@@ -89,10 +121,69 @@ const getMoonPhase = (date: Date) => {
   return { name: "Waning crescent", icon: "◓", age };
 };
 
-const getYearProgress = (date: Date) => {
-  const start = new Date(date.getFullYear(), 0, 1).getTime();
-  const end = new Date(date.getFullYear() + 1, 0, 1).getTime();
-  return Math.round(((date.getTime() - start) / (end - start)) * 100);
+const getYearProgressInTimeZone = (date: Date, timeZone: string) => {
+  const { year } = getDatePartsInTimeZone(date, timeZone);
+  const dayOfYear = getDayOfYearInTimeZone(date, timeZone);
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInYear = leapYear ? 366 : 365;
+  return {
+    progress: Math.round((dayOfYear / daysInYear) * 100),
+    daysRemain: daysInYear - dayOfYear,
+  };
+};
+
+const getSolarLongitude = (dayOfYear: number) => {
+  const longitude = ((dayOfYear - 80) * (360 / 365) + 360) % 360;
+  return longitude;
+};
+
+const getZodiacPosition = (dayOfYear: number) => {
+  const signs = [
+    "Aries",
+    "Taurus",
+    "Gemini",
+    "Cancer",
+    "Leo",
+    "Virgo",
+    "Libra",
+    "Scorpio",
+    "Sagittarius",
+    "Capricorn",
+    "Aquarius",
+    "Pisces",
+  ];
+  const longitude = getSolarLongitude(dayOfYear);
+  const index = Math.floor(longitude / 30);
+  const degrees = longitude - index * 30;
+  const wholeDegrees = Math.floor(degrees);
+  const minutes = Math.round((degrees - wholeDegrees) * 60);
+  return {
+    sign: signs[index],
+    position: `${wholeDegrees}° ${String(minutes).padStart(2, "0")}′`,
+    longitude,
+  };
+};
+
+const getSolarAltitude = (latitude: number, dayOfYear: number) => {
+  const declination = getAnalemmaPoint(dayOfYear).declination;
+  const latitudeRadians = (latitude * Math.PI) / 180;
+  const declinationRadians = (declination * Math.PI) / 180;
+  const altitude =
+    (Math.asin(
+      Math.sin(latitudeRadians) * Math.sin(declinationRadians) +
+        Math.cos(latitudeRadians) * Math.cos(declinationRadians),
+    ) *
+      180) /
+    Math.PI;
+  const wholeDegrees = Math.max(0, Math.round(altitude));
+  return `${wholeDegrees}°`;
+};
+
+const formatSignedDuration = (minutes: number) => {
+  if (minutes === 0) return "No change";
+  const absolute = Math.abs(minutes);
+  const sign = minutes > 0 ? "+" : "-";
+  return `${sign}${Math.floor(absolute / 60) ? `${Math.floor(absolute / 60)}h ` : ""}${absolute % 60}m`;
 };
 
 type Location = {
@@ -106,6 +197,7 @@ type Location = {
   solarNoon: string;
   daylight: string;
   timeZone: string;
+  daylightChange?: number;
 };
 
 const locations: Location[] = [
@@ -181,9 +273,9 @@ const smoothTemperatures = (points: TemperaturePoint[]) =>
     };
   });
 
-const fetchTemperatureHistory = async (location: Location) => {
-  const currentYear = new Date().getFullYear();
-  const today = new Date().toISOString().slice(0, 10);
+const fetchTemperatureHistory = async (location: Location, dateKey: string) => {
+  const currentYear = Number(dateKey.slice(0, 4));
+  const today = dateKey;
   const years = [currentYear - 2, currentYear - 1, currentYear];
   const results = await Promise.all(
     years.map(async (year) => {
@@ -222,18 +314,20 @@ const fetchTemperatureHistory = async (location: Location) => {
 
 function TemperatureHistoryPanel({
   location,
+  dateKey,
 }: {
   location: Location;
+  dateKey: string;
 }) {
   const [series, setSeries] = useState<TemperatureSeries[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
     "loading",
   );
-  const [currentYear] = useState(() => new Date().getFullYear());
+  const currentYear = Number(dateKey.slice(0, 4));
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchTemperatureHistory(location)
+    fetchTemperatureHistory(location, dateKey)
       .then((history) => {
         if (!controller.signal.aborted) {
           setSeries(history);
@@ -244,7 +338,7 @@ function TemperatureHistoryPanel({
         if (!controller.signal.aborted) setStatus("error");
       });
     return () => controller.abort();
-  }, [location]);
+  }, [location, dateKey]);
 
   const chart = { left: 42, right: 708, top: 22, bottom: 218 };
   const values = series.flatMap((item) =>
@@ -379,65 +473,6 @@ function MetricCard({
   );
 }
 
-function LocationPanel({
-  location,
-  onSelectLocation,
-  onUseCurrentLocation,
-}: {
-  location: (typeof locations)[number];
-  onSelectLocation: (name: string) => void;
-  onUseCurrentLocation: () => void;
-}) {
-  return (
-    <article className="location-card">
-      <div className="map-heading">
-        <div>
-          <p className="card-label">CURRENT LOCATION</p>
-          <h2>{location.name}</h2>
-          <p className="coordinates">
-            {location.latitude} · {location.longitude}
-          </p>
-        </div>
-        <div className="location-actions">
-          <button type="button" onClick={onUseCurrentLocation}>
-            Current Location
-          </button>
-          <select
-            aria-label="Choose location"
-            value={
-              locations.some((item) => item.name === location.name)
-                ? location.name
-                : ""
-            }
-            onChange={(event) => onSelectLocation(event.target.value)}
-          >
-            {locations.map((item) => (
-              <option key={item.name} value={item.name}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-      <div className="location-readout">
-        <div>
-          <strong>{location.latitude}</strong>
-          <small>LATITUDE</small>
-        </div>
-        <div>
-          <strong>{location.longitude}</strong>
-          <small>LONGITUDE</small>
-        </div>
-      </div>
-      <div className="location-rule" />
-      <p className="metric-detail">
-        Coordinates anchor the local sky calculations for sunrise, sunset, moon
-        phase, and the analemma.
-      </p>
-    </article>
-  );
-}
-
 function SolarPath({
   now,
   location,
@@ -460,6 +495,13 @@ function SolarPath({
   const currentAnalemmaPoint = mapAnalemmaPoint(
     getAnalemmaPoint(getDayOfYearInTimeZone(now, location.timeZone)),
   );
+  const dayOfYear = getDayOfYearInTimeZone(now, location.timeZone);
+  const zodiac = getZodiacPosition(dayOfYear);
+  const altitude = getSolarAltitude(location.latitudeValue, dayOfYear);
+  const dateAltitude =
+    minutes >= sunrise && minutes <= sunset
+      ? `${Math.round(Math.max(0, Math.sin(progress * Math.PI) * Number(altitude.replace("°", ""))))}°`
+      : "Below horizon";
   return (
     <>
       <div className="solar-path" aria-label="Sun position across today's sky">
@@ -485,10 +527,8 @@ function SolarPath({
         </svg>
         <div className="path-caption">
           <span>Altitude now</span>
-          <strong>
-            {Math.round(Math.max(0, Math.sin(progress * Math.PI) * 54))}°
-          </strong>
-          <small>sinusoidal solar elevation</small>
+          <strong>{dateAltitude}</strong>
+          <small>Location-based solar elevation</small>
         </div>
       </div>
       <div
@@ -496,7 +536,7 @@ function SolarPath({
         aria-label="Sun position on the seasonal lemniscate path"
       >
         <p className="diagram-title">
-          SEASONAL LEMNISCATE <span>7° 14′ VIRGO</span>
+          SEASONAL LEMNISCATE <span>{zodiac.position} {zodiac.sign.toUpperCase()}</span>
         </p>
         <svg className="analemma-chart" viewBox="0 0 340 150" role="img">
           <path
@@ -576,55 +616,158 @@ function MoonDiagram({ phase }: { phase: number }) {
 
 function App() {
   const [now, setNow] = useState(() => new Date());
+  const [timeInput, setTimeInput] = useState(() => toDateTimeLocalValue(new Date()));
+  const [timeIsLive, setTimeIsLive] = useState(true);
+  const [placeInput, setPlaceInput] = useState("Detecting location...");
   const [menuOpen, setMenuOpen] = useState(false);
   const [page, setPage] = useState<"clock" | "planets">("clock");
   const [location, setLocation] = useState(locations[0]);
 
-  const useCurrentLocation = () => {
+  const applyCurrentLocation = (coords: { latitude: number; longitude: number }) => {
+    setLocation({
+      ...locations[0],
+      name: "Locating...",
+      latitudeValue: coords.latitude,
+      longitudeValue: coords.longitude,
+      latitude: `${Math.abs(coords.latitude).toFixed(4)}° ${coords.latitude >= 0 ? "N" : "S"}`,
+      longitude: `${Math.abs(coords.longitude).toFixed(4)}° ${coords.longitude >= 0 ? "E" : "W"}`,
+    });
+    setPlaceInput("Current position");
+
+    void fetch(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${coords.latitude}&longitude=${coords.longitude}&localityLanguage=en`,
+    )
+      .then((response) => response.json())
+      .then((data: { city?: string; locality?: string; principalSubdivision?: string; countryName?: string }) => {
+        const city = data.city || data.locality;
+        const region = data.principalSubdivision;
+        const label = [city, region, data.countryName].filter(Boolean).join(", ");
+        if (label) {
+          setLocation((current) => ({ ...current, name: label }));
+          setPlaceInput(label);
+        }
+      })
+      .catch(() => undefined);
+  };
+
+  const activateCurrentLocation = () => {
+    setPlaceInput("Locating...");
+    if (!navigator.geolocation) {
+      setPlaceInput(locations[0].name);
+      setLocation(locations[0]);
+      return;
+    }
     navigator.geolocation?.getCurrentPosition(
-      ({ coords }) =>
-        setLocation({
-          ...locations[0],
-          name: "Current position",
-            latitudeValue: coords.latitude,
-            longitudeValue: coords.longitude,
-          latitude: `${Math.abs(coords.latitude).toFixed(2)}° ${coords.latitude >= 0 ? "N" : "S"}`,
-          longitude: `${Math.abs(coords.longitude).toFixed(2)}° ${coords.longitude >= 0 ? "E" : "W"}`,
-        }),
-      () => undefined,
+      ({ coords }) => applyCurrentLocation(coords),
+      () => {
+        setPlaceInput(locations[0].name);
+      },
     );
   };
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 1000);
+    const timer = window.setInterval(() => {
+      if (timeIsLive) {
+        const liveDate = new Date();
+        setNow(liveDate);
+        setTimeInput(toDateTimeLocalValue(liveDate));
+      }
+    }, 1000);
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        ({ coords }) =>
-          setLocation({
-            ...locations[0],
-            name: "Current position",
-            latitudeValue: coords.latitude,
-            longitudeValue: coords.longitude,
-            latitude: `${Math.abs(coords.latitude).toFixed(2)}° ${coords.latitude >= 0 ? "N" : "S"}`,
-            longitude: `${Math.abs(coords.longitude).toFixed(2)}° ${coords.longitude >= 0 ? "E" : "W"}`,
-          }),
-        () => undefined,
+        ({ coords }) => applyCurrentLocation(coords),
+        () => {
+          setPlaceInput(locations[0].name);
+        },
       );
     }
     return () => window.clearInterval(timer);
-  }, []);
+  }, [timeIsLive]);
+
+  const solarDateKey = getDateKeyInTimeZone(now, location.timeZone);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const selectedDate = new Date(`${solarDateKey}T12:00:00Z`);
+    selectedDate.setUTCDate(selectedDate.getUTCDate() - 1);
+    const previousDateKey = selectedDate.toISOString().slice(0, 10);
+    const params = new URLSearchParams({
+      latitude: String(location.latitudeValue),
+      longitude: String(location.longitudeValue),
+      daily: "sunrise,sunset",
+      timezone: "auto",
+      start_date: previousDateKey,
+      end_date: solarDateKey,
+    });
+    const todayKey = getDateKeyInTimeZone(new Date(), location.timeZone);
+    const solarApi =
+      solarDateKey < todayKey
+        ? "https://archive-api.open-meteo.com/v1/archive"
+        : "https://api.open-meteo.com/v1/forecast";
+    void fetch(`${solarApi}?${params}`, {
+      signal: controller.signal,
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error("Solar data unavailable");
+        return response.json();
+      })
+      .then((data: {
+        daily?: { sunrise?: string[]; sunset?: string[] };
+        timezone?: string;
+      }) => {
+        const sunriseValues = data.daily?.sunrise ?? [];
+        const sunsetValues = data.daily?.sunset ?? [];
+        const sunriseIso = sunriseValues.at(-1);
+        const sunsetIso = sunsetValues.at(-1);
+        if (!sunriseIso || !sunsetIso) return;
+        if (data.timezone) {
+          setLocation((current) => ({
+            ...current,
+            timeZone: data.timezone as string,
+          }));
+        }
+        const getTimeParts = (iso: string) => {
+          const match = iso.match(/T(\d{2}):(\d{2})/);
+          if (!match) return null;
+          return Number(match[1]) * 60 + Number(match[2]);
+        };
+        const formatMinutes = (minutes: number) => {
+          const normalized = ((minutes % 1440) + 1440) % 1440;
+          return `${String(Math.floor(normalized / 60)).padStart(2, "0")}:${String(normalized % 60).padStart(2, "0")}`;
+        };
+        const sunriseMinutes = getTimeParts(sunriseIso);
+        const sunsetMinutes = getTimeParts(sunsetIso);
+        if (sunriseMinutes == null || sunsetMinutes == null) return;
+        let daylightMinutes = sunsetMinutes - sunriseMinutes;
+        if (daylightMinutes < 0) daylightMinutes += 1440;
+        let daylightChange = 0;
+        const previousSunrise = getTimeParts(sunriseValues[0] ?? "");
+        const previousSunset = getTimeParts(sunsetValues[0] ?? "");
+        if (previousSunrise != null && previousSunset != null) {
+          let previousDaylight = previousSunset - previousSunrise;
+          if (previousDaylight < 0) previousDaylight += 1440;
+          daylightChange = daylightMinutes - previousDaylight;
+        }
+        setLocation((current) => ({
+          ...current,
+          sunrise: formatMinutes(sunriseMinutes),
+          sunset: formatMinutes(sunsetMinutes),
+          solarNoon: formatMinutes(Math.round((sunriseMinutes + sunsetMinutes) / 2)),
+          daylight: `${Math.floor(daylightMinutes / 60)}h ${String(daylightMinutes % 60).padStart(2, "0")}m`,
+          daylightChange,
+        }));
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [location.latitudeValue, location.longitudeValue, location.timeZone, solarDateKey]);
 
   const moon = useMemo(() => getMoonPhase(now), [now]);
-  const progress = getYearProgress(now);
+  const yearProgress = getYearProgressInTimeZone(now, location.timeZone);
+  const dayOfYear = getDayOfYearInTimeZone(now, location.timeZone);
+  const zodiac = getZodiacPosition(dayOfYear);
+  const solarAltitude = getSolarAltitude(location.latitudeValue, dayOfYear);
   const tomorrow = new Date(now);
   tomorrow.setDate(now.getDate() + 1);
-  const dateLabel = formatDate(now, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-    timeZone: location.timeZone,
-  });
   const localTime = formatDate(now, {
     hour: "2-digit",
     minute: "2-digit",
@@ -693,38 +836,103 @@ function App() {
         )}
       </header>
 
-      {page === "clock" ? (
-        <div className="mx-auto max-w-7xl py-8 sm:py-12">
-          <section className="hero-grid">
-            <div className="hero-copy">
-              <p className="kicker">CLOCKWALL / NIGHT MODE</p>
-              <div className="title-time-row">
-                <h1>
-                  The Universe,
-                  <br />
-                  <em>in motion.</em>
-                </h1>
-                <div className="hero-time-panel">
-                  <p className="clock-time">{localTime}</p>
-                  <p className="hero-date">{dateLabel}</p>
-                  <p className="hero-zone">
-                    LOCAL TIME <span>{locationZone}</span>
-                  </p>
-                </div>
-              </div>
-            </div>
-            <LocationPanel
-              location={location}
-              onUseCurrentLocation={useCurrentLocation}
-              onSelectLocation={(name) => {
-                const selected = locations.find((item) => item.name === name);
+      {page === "clock" && (
+        <section
+          className="time-place-bar mx-auto max-w-7xl"
+          aria-label="Time and location"
+        >
+          <button
+            className={`now-button ${timeIsLive ? "active" : ""}`}
+            type="button"
+            onClick={() => {
+              const liveDate = new Date();
+              setNow(liveDate);
+              setTimeInput(toDateTimeLocalValue(liveDate));
+              setTimeIsLive(true);
+            }}
+          >
+            <span className="live-dot" />
+            NOW
+          </button>
+          <label className="search-field time-field">
+            <span>TIME</span>
+            {timeIsLive ? (
+              <input
+                aria-label="Live time"
+                type="text"
+                readOnly
+                value={`${localTime} · ${locationZone}`}
+                onFocus={() => {
+                  setTimeIsLive(false);
+                  setTimeInput(toDateTimeLocalValue(now));
+                }}
+              />
+            ) : (
+              <input
+                aria-label="Time"
+                type="datetime-local"
+                value={timeInput}
+                onChange={(event) => {
+                  setTimeInput(event.target.value);
+                  setTimeIsLive(false);
+                  const selected = new Date(event.target.value);
+                  if (!Number.isNaN(selected.getTime())) setNow(selected);
+                }}
+              />
+            )}
+          </label>
+          <label className="search-field place-field">
+            <span>PLACE</span>
+            <select
+              aria-label="Place"
+              value={placeInput}
+              onChange={(event) => {
+                const selectedName = event.target.value;
+                setPlaceInput(selectedName);
+                if (selectedName === "Current position") {
+                  activateCurrentLocation();
+                  return;
+                }
+                const selected = locations.find(
+                  (item) => item.name === selectedName,
+                );
                 if (selected) setLocation(selected);
               }}
-            />
-          </section>
+            >
+              <option value="Current position">Current position</option>
+              {placeInput === "Locating..." && (
+                <option value="Locating...">Locating...</option>
+              )}
+              {placeInput !== "Current position" &&
+                placeInput !== "Locating..." &&
+                !locations.some((item) => item.name === placeInput) && (
+                <option value={placeInput}>{placeInput}</option>
+              )}
+              {locations.map((item) => (
+                <option key={item.name} value={item.name}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            className="here-button"
+            type="button"
+            onClick={activateCurrentLocation}
+          >
+            <span className="crosshair" aria-hidden="true">
+              ⌖
+            </span>
+            HERE
+          </button>
+        </section>
+      )}
+
+      {page === "clock" ? (
+        <div className="mx-auto max-w-7xl py-8 sm:py-12">
           <section className="dashboard-grid">
             <SolarPath now={now} location={location} />
-            <TemperatureHistoryPanel location={location} />
+            <TemperatureHistoryPanel location={location} dateKey={solarDateKey} />
             <article className="metric-card solar-times-card">
               <p className="card-label">DAYLIGHT WINDOW</p>
               <div className="solar-times">
@@ -756,24 +964,24 @@ function App() {
             </article>
             <MetricCard
               eyebrow="SEASONAL POSITION"
-              value="Virgo"
-              detail="Sun is 7° 14′ along the ecliptic"
+              value={zodiac.sign}
+              detail={`Sun is ${zodiac.position} along the ecliptic`}
             />
             <MetricCard
               eyebrow="YEAR IN PROGRESS"
-              value={`${progress}%`}
-              detail={`${365 - Math.ceil((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / 86400000)} days remain`}
+              value={`${yearProgress.progress}%`}
+              detail={`${yearProgress.daysRemain} days remain`}
               className="progress-card"
             />
             <MetricCard
               eyebrow="SOLAR NOON"
               value={location.solarNoon}
-              detail={`Altitude 54° 18′ · ${locationZone}`}
+              detail={`Altitude ${solarAltitude} · ${locationZone}`}
             />
             <MetricCard
               eyebrow="DAYLIGHT"
               value={location.daylight}
-              detail="2m 16s shorter than yesterday"
+              detail={`${formatSignedDuration(location.daylightChange ?? 0)} from yesterday`}
             />
           </section>
           <footer className="dashboard-footer">

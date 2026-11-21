@@ -4,7 +4,7 @@
   --line: #2a3338;
   --muted: #87949a;
   --paper: #f4f5eb;
-  --lime: #d2f35e;
+  --accent: #ff5127;
   font-family: "Roboto Mono", "SFMono-Regular", Consolas, monospace;
 }
 main {
@@ -39,7 +39,7 @@ button {
   cursor: pointer;
 }
 .brand-mark {
-  color: var(--lime);
+  color: var(--accent);
   font-size: 25px;
   line-height: 1;
 }
@@ -65,8 +65,8 @@ button {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--lime);
-  box-shadow: 0 0 12px var(--lime);
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent);
 }
 .menu-button {
   position: relative;
@@ -85,7 +85,7 @@ button {
 }
 .menu-button:hover,
 .menu-button:focus-visible {
-  border-color: var(--lime);
+  border-color: var(--accent);
   outline: none;
 }
 .menu-button span {
@@ -126,9 +126,113 @@ button {
   background: #273136;
 }
 .menu-panel button span {
-  color: var(--lime);
+  color: var(--accent);
   font-size: 9px;
   letter-spacing: 0.12em;
+}
+.time-place-bar {
+  display: grid;
+  grid-template-columns: 112px minmax(230px, 1fr) minmax(230px, 1fr) 112px;
+  align-items: stretch;
+  margin-top: 24px;
+  border: 1px solid #3b474a;
+  border-radius: 9px;
+  background:
+    linear-gradient(90deg, #ff512710 1px, transparent 1px),
+    linear-gradient(#ff512710 1px, transparent 1px),
+    #11171b;
+  background-size: 18px 18px;
+  box-shadow: 0 18px 55px #0007;
+  overflow: hidden;
+}
+.here-button {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 5px;
+  min-height: 82px;
+  padding: 8px 11px;
+  border: 0;
+  border-right: 1px solid #3b474a;
+  color: #9ca7a7;
+  background: #151c20;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+}
+.here-button:hover,
+.here-button:focus-visible {
+  color: var(--accent);
+  background: #1b231b;
+  outline: none;
+}
+.here-button .crosshair {
+  color: var(--accent);
+  font-size: 23px;
+  line-height: 1;
+}
+.search-field {
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  min-height: 72px;
+  padding: 10px 15px;
+  border-right: 1px solid #3b474a;
+}
+.search-field > span {
+  color: var(--accent);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+.search-field input,
+.search-field select {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: var(--paper);
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+}
+.search-field select {
+  cursor: pointer;
+  color-scheme: dark;
+}
+.search-field input[type="datetime-local"] {
+  color-scheme: dark;
+}
+.search-field input::placeholder {
+  color: #68767a;
+}
+.now-button {
+  border: 0;
+  color: #9ca7a7;
+  background: #151c20;
+  cursor: pointer;
+}
+.now-button {
+  display: grid;
+  place-items: center;
+  min-width: 72px;
+  gap: 5px;
+  padding: 8px 11px;
+  border-left: 1px solid #3b474a;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+.now-button.active {
+  color: var(--accent);
+  background: #1b231b;
+}
+.now-button .live-dot {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border-radius: 50%;
 }
 .hero-grid {
   position: relative;
@@ -141,7 +245,7 @@ button {
 }
 .kicker {
   margin: 0 0 22px;
-  color: var(--lime);
+  color: var(--accent);
 }
 .hero-copy h1,
 .planets-page h1 {
@@ -201,7 +305,7 @@ button {
   letter-spacing: 0.1em;
 }
 .hero-zone span {
-  color: var(--lime);
+  color: var(--accent);
   margin-left: 6px;
 }
 .clock-readout {
@@ -223,7 +327,7 @@ button {
 }
 .clock-readout p:last-child span {
   margin-left: 7px;
-  color: var(--lime);
+  color: var(--accent);
 }
 .solar-paths {
   display: grid;
@@ -251,7 +355,7 @@ button {
   letter-spacing: 0.1em;
 }
 .diagram-title span {
-  color: var(--lime);
+  color: var(--accent);
   white-space: nowrap;
 }
 .solar-path svg {
@@ -278,8 +382,8 @@ button {
   stroke-dasharray: 2 4;
 }
 .sun-marker {
-  fill: var(--lime);
-  filter: drop-shadow(0 0 7px #d2f35e);
+  fill: var(--accent);
+  filter: drop-shadow(0 0 7px #ff5127);
 }
 .earth-marker {
   fill: #a9b7b7;
@@ -299,7 +403,7 @@ button {
 }
 .analemma-path {
   fill: none;
-  stroke: var(--lime);
+  stroke: var(--accent);
   stroke-width: 1.6;
   stroke-linejoin: round;
   stroke-linecap: round;
@@ -345,7 +449,7 @@ button {
 }
 .solar-times-card {
   grid-column: span 2;
-  background: linear-gradient(145deg, var(--lime) 0 49.5%, #11161c 50%);
+  background: linear-gradient(145deg, var(--accent) 0 49.5%, #11161c 50%);
 }
 .temperature-panel {
   grid-column: 1 / -1;
@@ -472,9 +576,9 @@ button {
   width: 44px;
   height: 44px;
   place-items: center;
-  border: 1px solid var(--lime);
+  border: 1px solid var(--accent);
   border-radius: 50%;
-  color: var(--lime);
+  color: var(--accent);
   font-size: 28px;
   font-weight: 300;
 }
@@ -499,7 +603,7 @@ button {
   background: #334047;
 }
 .solar-times-card .card-label {
-  color: #5a692e;
+  color: #1a0d09;
 }
 .solar-times {
   display: grid;
@@ -514,7 +618,7 @@ button {
   text-align: right;
 }
 .solar-times span {
-  color: #384522;
+  color: #1a0d09;
   font-size: 9px;
   font-weight: 700;
 }
@@ -588,18 +692,18 @@ button {
   font-size: 9px;
 }
 .accent-card {
-  background: var(--lime);
-  border-color: var(--lime);
+  background: var(--accent);
+  border-color: var(--accent);
 }
 .accent-card .card-label,
 .accent-card .metric-detail {
-  color: #54632a;
+  color: #1a0d09;
 }
 .accent-card .metric-value {
   color: #111710;
 }
 .progress-card .metric-value {
-  color: var(--lime);
+  color: var(--accent);
 }
 .moon-card {
   position: relative;
@@ -663,7 +767,7 @@ button {
 }
 .location-actions button {
   padding: 6px 8px;
-  color: var(--lime);
+  color: var(--accent);
 }
 .location-actions select {
   max-width: 130px;
@@ -673,7 +777,7 @@ button {
   width: auto;
   height: auto;
   padding: 3px 6px;
-  color: var(--lime);
+  color: var(--accent);
   background: #263020;
   box-shadow: none;
   border-radius: 3px;
@@ -708,8 +812,8 @@ button {
   opacity: 0.7;
 }
 .pin-halo {
-  fill: #d2f35e22;
-  stroke: var(--lime);
+  fill: #ff512722;
+  stroke: var(--accent);
   stroke-width: 1;
 }
 .pin {
@@ -734,7 +838,7 @@ button {
 }
 .dashboard-footer b {
   margin-left: 8px;
-  color: var(--lime);
+  color: var(--accent);
   font-weight: 500;
 }
 .planets-page {
@@ -781,8 +885,8 @@ button {
 .sun {
   width: 58px;
   height: 58px;
-  background: var(--lime);
-  box-shadow: 0 0 50px #d2f35e66;
+  background: var(--accent);
+  box-shadow: 0 0 50px #ff512766;
 }
 .earth {
   width: 13px;
@@ -803,7 +907,7 @@ button {
   padding-top: 18px;
 }
 .coming-soon span {
-  color: var(--lime);
+  color: var(--accent);
   font-size: 9px;
   font-weight: bold;
   letter-spacing: 0.15em;
@@ -817,6 +921,9 @@ button {
   color: #78848b;
 }
 @media (max-width: 900px) {
+  .time-place-bar {
+    grid-template-columns: 112px minmax(190px, 1fr) minmax(190px, 1fr) 112px;
+  }
   .hero-grid {
     grid-template-columns: 1fr 1fr;
     gap: 20px;
@@ -840,6 +947,25 @@ button {
   }
 }
 @media (max-width: 560px) {
+  .time-place-bar {
+    grid-template-columns: 112px minmax(0, 1fr) 112px;
+  }
+  .time-field {
+    grid-column: 2;
+  }
+  .place-field {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    border-top: 1px solid #3b474a;
+  }
+  .here-button {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .now-button {
+    grid-column: 3;
+    grid-row: 1;
+  }
   .hero-grid {
     display: block;
   }
@@ -857,12 +983,15 @@ button {
     grid-column: span 1;
   }
   .dashboard-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
-  .time-card,
-  .map-card,
-  .location-card {
-    grid-column: span 1;
+  .dashboard-grid > * {
+    grid-column: 1 / -1;
+    min-width: 0;
+    width: 100%;
+  }
+  .dashboard-grid > .solar-times-card {
+    grid-column: 1 / -1;
   }
   .map {
     height: 190px;
