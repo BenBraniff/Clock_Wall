@@ -1,9 +1,9 @@
 :root {
-  --ink: #080a0f;
-  --panel: #11161c;
-  --line: #2a3338;
-  --muted: #87949a;
-  --paper: #f4f5eb;
+  --ink: #050505;
+  --panel: #111111;
+  --line: #3a3a3a;
+  --muted: #9a9a9a;
+  --paper: #f5f5f5;
   --accent: #ff5127;
   font-family: "Roboto Mono", "SFMono-Regular", Consolas, monospace;
 }
@@ -11,7 +11,7 @@ main {
   min-height: 100vh;
   overflow: hidden;
   background:
-    radial-gradient(circle at 78% 12%, #182028 0, var(--ink) 40%), var(--ink);
+    radial-gradient(circle at 78% 12%, #171717 0, var(--ink) 42%), var(--ink);
 }
 button {
   font-family: inherit;
@@ -24,7 +24,7 @@ button {
   justify-content: space-between;
   width: 100%;
   min-height: 58px;
-  border-color: #344047 !important;
+  border-color: #3a3a3a !important;
 }
 .brand {
   display: flex;
@@ -77,9 +77,9 @@ button {
   gap: 5px;
   align-content: center;
   padding: 9px 10px;
-  border: 1px solid #59666b;
-  border-radius: 7px;
-  background: #151c22;
+  border: 1px solid #666666;
+  border-radius: 0;
+  background: #151515;
   cursor: pointer;
   box-shadow: 0 0 0 3px #080a0f44;
 }
@@ -101,10 +101,10 @@ button {
   display: grid;
   width: 245px;
   padding: 8px;
-  border: 1px solid #4d5b60;
-  border-radius: 8px;
-  background: #13191f;
-  box-shadow: 0 20px 60px #000b;
+  border: 1px solid #666666;
+  border-radius: 0;
+  background: #101010;
+  box-shadow: 0 20px 60px #000;
 }
 .menu-panel button {
   grid-column: span 2;
@@ -113,7 +113,7 @@ button {
   justify-content: space-between;
   padding: 14px 12px;
   border: 0;
-  border-radius: 4px;
+  border-radius: 0;
   color: #aab4b8;
   background: transparent;
   text-align: left;
@@ -135,12 +135,12 @@ button {
   grid-template-columns: 112px minmax(230px, 1fr) minmax(230px, 1fr) 112px;
   align-items: stretch;
   margin-top: 24px;
-  border: 1px solid #3b474a;
-  border-radius: 9px;
+  border: 1px solid #555555;
+  border-radius: 0;
   background:
-    linear-gradient(90deg, #ff512710 1px, transparent 1px),
-    linear-gradient(#ff512710 1px, transparent 1px),
-    #11171b;
+    linear-gradient(90deg, #ffffff08 1px, transparent 1px),
+    linear-gradient(#ffffff08 1px, transparent 1px),
+    #111111;
   background-size: 18px 18px;
   box-shadow: 0 18px 55px #0007;
   overflow: hidden;
@@ -164,7 +164,7 @@ button {
 .here-button:hover,
 .here-button:focus-visible {
   color: var(--accent);
-  background: #1b231b;
+  background: #1a1a1a;
   outline: none;
 }
 .here-button .crosshair {
@@ -226,13 +226,29 @@ button {
 }
 .now-button.active {
   color: var(--accent);
-  background: #1b231b;
+  background: #1a1a1a;
+}
+.now-button.active .live-dot {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  animation: now-pulse 2.4s ease-in-out infinite;
 }
 .now-button .live-dot {
   width: 7px;
   height: 7px;
   padding: 0;
   border-radius: 50%;
+}
+@keyframes now-pulse {
+  50% {
+    opacity: 0.35;
+    box-shadow: 0 0 2px var(--accent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .now-button.active .live-dot {
+    animation: none;
+  }
 }
 .hero-grid {
   position: relative;
@@ -289,7 +305,7 @@ button {
   margin-top: 0;
   padding: 12px 15px;
   border: 1px solid #506064;
-  border-radius: 7px;
+  border-radius: 0;
   background: #192228;
 }
 .hero-time-panel .clock-time {
@@ -329,19 +345,11 @@ button {
   margin-left: 7px;
   color: var(--accent);
 }
-.solar-paths {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
-}
-.solar-paths {
-  grid-column: 2;
-}
-.solar-path {
+.chart-card {
   min-width: 0;
   padding: 12px 12px 10px;
   border: 1px solid #273238;
-  border-radius: 7px;
+  border-radius: 0;
   background: #0e1318aa;
 }
 .diagram-title {
@@ -358,22 +366,12 @@ button {
   color: var(--accent);
   white-space: nowrap;
 }
-.solar-path svg {
+.chart-card svg {
   display: block;
   width: 100%;
   height: auto;
   margin-top: 7px;
   overflow: visible;
-}
-.horizon {
-  stroke: #657176;
-  stroke-width: 1;
-}
-.sun-curve {
-  fill: none;
-  stroke: #59686b;
-  stroke-width: 1.5;
-  stroke-dasharray: 3 4;
 }
 .lemniscate {
   fill: none;
@@ -417,7 +415,7 @@ button {
   font-size: 6px !important;
   letter-spacing: 0;
 }
-.solar-path text {
+.chart-card text {
   fill: #829096;
   font-size: 7px;
   font-family: inherit;
@@ -447,17 +445,81 @@ button {
   gap: 10px;
   padding: 18px 0;
 }
+.charts-grid {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
 .solar-times-card {
   grid-column: span 2;
-  background: linear-gradient(145deg, var(--accent) 0 49.5%, #11161c 50%);
+  background: linear-gradient(145deg, var(--accent) 0 49.5%, #111111 50%);
 }
 .temperature-panel {
   grid-column: 1 / -1;
   min-width: 0;
   padding: 16px 17px 12px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   background: #0e1318aa;
+}
+.charts-grid > .chart-card,
+.charts-grid > .temperature-panel {
+  grid-column: auto;
+  height: 360px;
+}
+.solar-angle-grid {
+  fill: none;
+  stroke: #383838;
+  stroke-width: 0.7;
+}
+.solar-angle-horizon {
+  fill: none;
+  stroke: #777777;
+  stroke-width: 1;
+}
+.solar-angle-curve {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.solar-angle-marker {
+  stroke: var(--paper);
+  stroke-width: 1.2;
+}
+.solar-angle-empty {
+  fill: #999999 !important;
+}
+.solar-angle-readings {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 2px;
+  padding-top: 9px;
+  border-top: 1px solid #333333;
+}
+.solar-angle-readings div {
+  display: grid;
+  gap: 4px;
+}
+.solar-angle-readings span {
+  color: #849197;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+.solar-angle-readings span small {
+  display: block;
+  margin-top: 2px;
+  font-size: 6px;
+  font-weight: 400;
+}
+.solar-angle-readings strong {
+  color: var(--paper);
+  font-size: clamp(11px, 1.2vw, 15px);
+  font-weight: 500;
 }
 .temperature-heading {
   display: flex;
@@ -562,7 +624,7 @@ button {
   min-height: 168px;
   padding: 16px 17px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--panel);
 }
 .location-readout {
@@ -643,13 +705,13 @@ button {
   color: var(--paper);
 }
 .solar-times-card .metric-detail {
-  color: #738083;
+  color: #1a0d09;
 }
 .map-card,
 .metric-card {
   min-height: 168px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--panel);
 }
 .metric-card {
@@ -719,12 +781,12 @@ button {
   height: 78px;
 }
 .moon-disc {
-  fill: #e0e4d8;
-  stroke: #aeb9ac;
+  fill: #f5f5f5;
+  stroke: #b5b5b5;
   stroke-width: 1;
 }
 .moon-shadow {
-  fill: #283137;
+  fill: #303030;
 }
 .moon-card .metric-detail {
   margin-top: 2px;
@@ -758,7 +820,7 @@ button {
 .location-actions button,
 .location-actions select {
   border: 1px solid #46545a;
-  border-radius: 4px;
+  border-radius: 0;
   color: var(--paper);
   background: #1b2429;
   font: inherit;
@@ -778,9 +840,9 @@ button {
   height: auto;
   padding: 3px 6px;
   color: var(--accent);
-  background: #263020;
+  background: #1a1a1a;
   box-shadow: none;
-  border-radius: 3px;
+  border-radius: 0;
   font-size: 8px;
   letter-spacing: 0.13em;
 }
@@ -790,7 +852,7 @@ button {
   height: 235px;
   margin-top: 12px;
   border: 1px solid #2d3537;
-  border-radius: 5px;
+  border-radius: 0;
 }
 .coast {
   fill: none;
@@ -840,6 +902,131 @@ button {
   margin-left: 8px;
   color: var(--accent);
   font-weight: 500;
+}
+
+/* Sharp, high-contrast observatory finish */
+.menu-button,
+.menu-panel,
+.menu-panel button,
+.time-place-bar,
+.search-field,
+.hero-time-panel,
+.chart-card,
+.temperature-panel,
+.location-card,
+.metric-card,
+.map-card,
+.location-actions button,
+.location-actions select,
+.planet-orbit,
+.orbit {
+  border-radius: 0;
+}
+
+.menu-panel button,
+.here-button,
+.now-button,
+.search-field,
+.hero-time-panel,
+.temperature-panel,
+.location-card,
+.metric-card,
+.map-card {
+  border-color: #3d3d3d;
+}
+
+.here-button,
+.now-button,
+.menu-panel,
+.menu-panel button,
+.temperature-panel,
+.location-card,
+.metric-card,
+.map-card,
+.chart-card,
+.hero-time-panel {
+  background: #111111;
+}
+
+.now-button.active,
+.here-button:hover,
+.here-button:focus-visible {
+  background: #1a1a1a;
+}
+
+.time-place-bar {
+  border-color: #4b4b4b;
+  background:
+    linear-gradient(90deg, #ffffff08 1px, transparent 1px),
+    linear-gradient(#ffffff08 1px, transparent 1px),
+    #101010;
+  box-shadow: none;
+}
+
+.search-field,
+.here-button,
+.now-button {
+  border-color: #3d3d3d;
+}
+
+.solar-times-card {
+  background: linear-gradient(135deg, var(--accent) 0 49.5%, #111111 50%);
+  border-color: var(--accent);
+}
+
+.temperature-grid {
+  stroke: #383838;
+}
+
+.temperature-grid.horizontal {
+  stroke: #444444;
+}
+
+.temperature-line.historical {
+  stroke: #777777;
+}
+
+.temperature-current-point,
+.temperature-line.current {
+  stroke: #f5f5f5;
+}
+
+.temperature-axis-label,
+.temperature-caption,
+.temperature-legend,
+.temperature-status {
+  fill: #999999;
+  color: #999999;
+}
+
+.location-rule,
+.dashboard-footer,
+.hero-grid {
+  border-color: #333333;
+}
+
+.route {
+  stroke: #777777;
+}
+
+.earth {
+  background: #b8b8b8;
+}
+
+.mars {
+  background: #777777;
+}
+
+.coast {
+  stroke: #777777;
+}
+
+.state-line {
+  stroke: #555555;
+}
+
+.coming-soon {
+  border-top-color: #444444;
 }
 .planets-page {
   max-width: 900px;
@@ -929,9 +1116,6 @@ button {
     gap: 20px;
     padding: 20px 0 25px;
   }
-  .solar-paths {
-    grid-column: 1 / -1;
-  }
   .dashboard-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -975,12 +1159,12 @@ button {
   .title-time-row {
     display: block;
   }
-  .solar-paths {
-    display: grid;
-    grid-template-columns: 1fr;
+  .charts-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
-  .solar-path {
-    grid-column: span 1;
+  .charts-grid > .chart-card,
+  .charts-grid > .temperature-panel {
+    height: auto;
   }
   .dashboard-grid {
     grid-template-columns: minmax(0, 1fr);

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import * as SunCalc from "suncalc";
 import "./App.css";
 
 const formatDate = (date: Date, options: Intl.DateTimeFormatOptions) =>
@@ -9,22 +10,17 @@ const toDateTimeLocalValue = (date: Date) => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 
-const getMinutesInTimeZone = (date: Date, timeZone: string) => {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
+const getTimeZoneOffsetMinutes = (date: Date, timeZone: string) => {
+  const offset = new Intl.DateTimeFormat("en-US", {
     timeZone,
-  }).formatToParts(date);
-  const hour = Number(parts.find((part) => part.type === "hour")?.value ?? 0);
-  const minute = Number(
-    parts.find((part) => part.type === "minute")?.value ?? 0,
-  );
-  const second = Number(
-    parts.find((part) => part.type === "second")?.value ?? 0,
-  );
-  return hour * 60 + minute + second / 60;
+    timeZoneName: "longOffset",
+  })
+    .formatToParts(date)
+    .find((part) => part.type === "timeZoneName")?.value;
+  const match = offset?.match(/GMT([+-])(\d{2}):(\d{2})/);
+  if (!match) return 0;
+  const minutes = Number(match[2]) * 60 + Number(match[3]);
+  return match[1] === "-" ? -minutes : minutes;
 };
 
 const getDayOfYearInTimeZone = (date: Date, timeZone: string) => {
@@ -162,21 +158,6 @@ const getZodiacPosition = (dayOfYear: number) => {
     position: `${wholeDegrees}° ${String(minutes).padStart(2, "0")}′`,
     longitude,
   };
-};
-
-const getSolarAltitude = (latitude: number, dayOfYear: number) => {
-  const declination = getAnalemmaPoint(dayOfYear).declination;
-  const latitudeRadians = (latitude * Math.PI) / 180;
-  const declinationRadians = (declination * Math.PI) / 180;
-  const altitude =
-    (Math.asin(
-      Math.sin(latitudeRadians) * Math.sin(declinationRadians) +
-        Math.cos(latitudeRadians) * Math.cos(declinationRadians),
-    ) *
-      180) /
-    Math.PI;
-  const wholeDegrees = Math.max(0, Math.round(altitude));
-  return `${wholeDegrees}°`;
 };
 
 const formatSignedDuration = (minutes: number) => {
@@ -473,125 +454,182 @@ function MetricCard({
   );
 }
 
-function SolarPath({
+function SeasonalAnalemmaPanel({
   now,
   location,
 }: {
   now: Date;
   location: (typeof locations)[number];
 }) {
-  const [sunriseHour, sunriseMinute] = location.sunrise.split(":").map(Number);
-  const [sunsetHour, sunsetMinute] = location.sunset.split(":").map(Number);
-  const minutes = getMinutesInTimeZone(now, location.timeZone);
-  const sunrise = sunriseHour * 60 + sunriseMinute;
-  const sunset = sunsetHour * 60 + sunsetMinute;
-  const progress = Math.max(
-    0,
-    Math.min(1, (minutes - sunrise) / (sunset - sunrise)),
-  );
-  const sunX = 26 + progress * 288;
-  const sunY = 118 - Math.sin(progress * Math.PI) * 79;
+  const dayOfYear = getDayOfYearInTimeZone(now, location.timeZone);
   const analemmaPath = getAnalemmaPath();
   const currentAnalemmaPoint = mapAnalemmaPoint(
-    getAnalemmaPoint(getDayOfYearInTimeZone(now, location.timeZone)),
+    getAnalemmaPoint(dayOfYear),
   );
-  const dayOfYear = getDayOfYearInTimeZone(now, location.timeZone);
   const zodiac = getZodiacPosition(dayOfYear);
-  const altitude = getSolarAltitude(location.latitudeValue, dayOfYear);
-  const dateAltitude =
-    minutes >= sunrise && minutes <= sunset
-      ? `${Math.round(Math.max(0, Math.sin(progress * Math.PI) * Number(altitude.replace("°", ""))))}°`
-      : "Below horizon";
   return (
-    <>
-      <div className="solar-path" aria-label="Sun position across today's sky">
-        <p className="diagram-title">
-          TODAY'S SUN PATH{" "}
-          <span>
-            {location.sunrise} — {location.sunset}
-          </span>
-        </p>
-        <svg viewBox="0 0 340 150" role="img">
-          <path className="horizon" d="M20 118H320" />
-          <path className="sun-curve" d="M26 118C87 8 253 8 314 118" />
-          <circle className="sun-marker" cx={sunX} cy={sunY} r="7" />
-          <text x="20" y="137">
-            SUNRISE
-          </text>
-          <text x="280" y="137">
-            SUNSET
-          </text>
-          <text x="154" y="28">
-            SOLAR NOON
-          </text>
-        </svg>
-        <div className="path-caption">
-          <span>Altitude now</span>
-          <strong>{dateAltitude}</strong>
-          <small>Location-based solar elevation</small>
-        </div>
+    <article
+      className="chart-card analemma-panel"
+      aria-label="Sun position on the seasonal lemniscate path"
+    >
+      <p className="diagram-title">
+        SEASONAL LEMNISCATE <span>{zodiac.position} {zodiac.sign.toUpperCase()}</span>
+      </p>
+      <svg className="analemma-chart" viewBox="0 0 340 150" role="img">
+        <path
+          className="analemma-grid"
+          d="M25 18H315M25 80H315M25 142H315M25 18V142M170 18V142M315 18V142"
+        />
+        <path className="analemma-axis" d="M25 80H315" />
+        <path className="analemma-path" d={analemmaPath} />
+        <circle
+          className="sun-marker analemma-marker"
+          cx={currentAnalemmaPoint.x}
+          cy={currentAnalemmaPoint.y}
+          r="5"
+        />
+        <text className="analemma-label" x="25" y="148">
+          −18 min
+        </text>
+        <text className="analemma-label" x="158" y="148">
+          0
+        </text>
+        <text className="analemma-label" x="287" y="148">
+          +18 min
+        </text>
+        <text className="analemma-label" x="7" y="21">
+          +25°
+        </text>
+        <text className="analemma-label" x="10" y="84">
+          0°
+        </text>
+        <text className="analemma-label" x="7" y="140">
+          −25°
+        </text>
+        <text className="analemma-label" x="111" y="12">
+          DECLINATION / EOT
+        </text>
+        <text
+          className="analemma-label"
+          x={currentAnalemmaPoint.x + 7}
+          y={currentAnalemmaPoint.y - 7}
+        >
+          DAY {dayOfYear}
+        </text>
+      </svg>
+      <div className="path-caption">
+        <span>Current point</span>
+        <strong>{getAnalemmaPoint(dayOfYear).equationOfTime.toFixed(1)} min EoT</strong>
+        <small>Equation of Time vs solar declination</small>
       </div>
-      <div
-        className="solar-path lemniscate-panel"
-        aria-label="Sun position on the seasonal lemniscate path"
-      >
-        <p className="diagram-title">
-          SEASONAL LEMNISCATE <span>{zodiac.position} {zodiac.sign.toUpperCase()}</span>
-        </p>
-        <svg className="analemma-chart" viewBox="0 0 340 150" role="img">
-          <path
-            className="analemma-grid"
-            d="M25 18H315M25 80H315M25 142H315M25 18V142M170 18V142M315 18V142"
-          />
-          <path className="analemma-axis" d="M25 80H315" />
-          <path className="analemma-path" d={analemmaPath} />
+    </article>
+  );
+}
+
+function SolarAnglesPanel({
+  now,
+  location,
+}: {
+  now: Date;
+  location: (typeof locations)[number];
+}) {
+  const { latitudeValue, longitudeValue, timeZone } = location;
+  const currentPosition = SunCalc.getPosition(now, latitudeValue, longitudeValue);
+  const elevation = currentPosition.altitude;
+  const azimuth = (currentPosition.azimuth * (180 / Math.PI) + 540) % 360;
+  const zenith = 90 - elevation;
+  const sunTimes = SunCalc.getTimes(
+    now,
+    latitudeValue,
+    longitudeValue,
+    0,
+    getTimeZoneOffsetMinutes(now, timeZone),
+  );
+  const sunrise = sunTimes.sunrise?.getTime() ?? Number.NaN;
+  const sunset = sunTimes.sunset?.getTime() ?? Number.NaN;
+  const hasDaylight =
+    Number.isFinite(sunrise) && Number.isFinite(sunset) && sunset > sunrise;
+  const nowMs = now.getTime();
+  const isSunAboveHorizon =
+    hasDaylight && nowMs >= sunrise && nowMs <= sunset;
+  const sampleTimes = hasDaylight
+    ? Array.from({ length: 49 }, (_, index) =>
+        sunrise + ((sunset - sunrise) * index) / 48,
+      )
+    : [];
+  if (isSunAboveHorizon) sampleTimes.push(nowMs);
+  sampleTimes.sort((first, second) => first - second);
+
+  const toChartPoint = (time: number) => {
+    const position = SunCalc.getPosition(
+      new Date(time),
+      latitudeValue,
+      longitudeValue,
+    );
+    const altitude = position.altitude;
+    return {
+      x: 25 + ((time - sunrise) / (sunset - sunrise)) * 290,
+      y: 118 - ((altitude + 10) / 100) * 100,
+    };
+  };
+  const path = sampleTimes
+    .map((time, index) => {
+      const point = toChartPoint(time);
+      return `${index === 0 ? "M" : "L"}${point.x.toFixed(2)} ${point.y.toFixed(2)}`;
+    })
+    .join(" ");
+  const currentPoint = isSunAboveHorizon ? toChartPoint(nowMs) : null;
+
+  return (
+    <article
+      className="chart-card solar-angles-panel"
+      aria-label="Solar azimuth, elevation, and zenith angles"
+    >
+      <p className="diagram-title">
+        SOLAR ANGLES
+        <span>{location.name.toUpperCase()}</span>
+      </p>
+      <svg className="solar-angles-chart" viewBox="0 0 340 150" role="img">
+        <path className="solar-angle-grid" d="M25 18H315M25 63H315M25 108H315" />
+        <path className="solar-angle-grid" d="M25 18V118M170 18V118M315 18V118" />
+        <path className="solar-angle-horizon" d="M25 108H315" />
+        {path ? (
+          <path className="solar-angle-curve" d={path} />
+        ) : (
+          <text className="solar-angle-empty" x="170" y="72" textAnchor="middle">
+            NO SUNRISE / SUNSET TODAY
+          </text>
+        )}
+        {currentPoint && (
           <circle
-            className="sun-marker analemma-marker"
-            cx={currentAnalemmaPoint.x}
-            cy={currentAnalemmaPoint.y}
+            className="sun-marker solar-angle-marker"
+            cx={currentPoint.x}
+            cy={currentPoint.y}
             r="5"
           />
-          <text className="analemma-label" x="25" y="148">
-            −18 min
-          </text>
-          <text className="analemma-label" x="158" y="148">
-            0
-          </text>
-          <text className="analemma-label" x="287" y="148">
-            +18 min
-          </text>
-          <text className="analemma-label" x="7" y="21">
-            +25°
-          </text>
-          <text className="analemma-label" x="10" y="84">
-            0°
-          </text>
-          <text className="analemma-label" x="7" y="140">
-            −25°
-          </text>
-          <text className="analemma-label" x="111" y="12">
-            DECLINATION / EOT
-          </text>
-          <text
-            className="analemma-label"
-            x={currentAnalemmaPoint.x + 7}
-            y={currentAnalemmaPoint.y - 7}
-          >
-            DAY {getDayOfYearInTimeZone(now, location.timeZone)}
-          </text>
-        </svg>
-        <div className="path-caption">
-          <span>Current point</span>
-          <strong>
-            {getAnalemmaPoint(
-              getDayOfYearInTimeZone(now, location.timeZone),
-            ).equationOfTime.toFixed(1)}{" "}
-            min EoT
-          </strong>
-          <small>Equation of Time vs solar declination</small>
+        )}
+        <text x="5" y="21">90°</text>
+        <text x="5" y="66">45°</text>
+        <text x="9" y="111">0°</text>
+        <text x="25" y="137" textAnchor="start">RISE</text>
+        <text x="170" y="137" textAnchor="middle">SOLAR NOON</text>
+        <text x="315" y="137" textAnchor="end">SET</text>
+      </svg>
+      <div className="solar-angle-readings">
+        <div>
+          <span>AZIMUTH <small>FROM NORTH</small></span>
+          <strong>{azimuth.toFixed(1)}°</strong>
+        </div>
+        <div>
+          <span>ELEVATION</span>
+          <strong>{elevation.toFixed(1)}°</strong>
+        </div>
+        <div>
+          <span>ZENITH</span>
+          <strong>{zenith.toFixed(1)}°</strong>
         </div>
       </div>
-    </>
+    </article>
   );
 }
 
@@ -765,9 +803,20 @@ function App() {
   const yearProgress = getYearProgressInTimeZone(now, location.timeZone);
   const dayOfYear = getDayOfYearInTimeZone(now, location.timeZone);
   const zodiac = getZodiacPosition(dayOfYear);
-  const solarAltitude = getSolarAltitude(location.latitudeValue, dayOfYear);
-  const tomorrow = new Date(now);
-  tomorrow.setDate(now.getDate() + 1);
+  const solarNoon = SunCalc.getTimes(
+    now,
+    location.latitudeValue,
+    location.longitudeValue,
+    0,
+    getTimeZoneOffsetMinutes(now, location.timeZone),
+  ).solarNoon;
+  const solarAltitude = `${Math.round(
+    SunCalc.getPosition(
+      solarNoon,
+      location.latitudeValue,
+      location.longitudeValue,
+    ).altitude,
+  )}°`;
   const localTime = formatDate(now, {
     hour: "2-digit",
     minute: "2-digit",
@@ -783,7 +832,7 @@ function App() {
     .pop();
 
   return (
-    <main className="min-h-screen bg-[#080a0f] px-4 py-5 text-white sm:px-8 lg:px-12">
+    <main className="min-h-screen bg-[#050505] px-4 py-5 text-white sm:px-8 lg:px-12">
       <header className="site-header mx-auto flex max-w-7xl items-center justify-between border-b border-white/10 pb-5">
         <button
           className="brand"
@@ -931,8 +980,11 @@ function App() {
       {page === "clock" ? (
         <div className="mx-auto max-w-7xl py-8 sm:py-12">
           <section className="dashboard-grid">
-            <SolarPath now={now} location={location} />
-            <TemperatureHistoryPanel location={location} dateKey={solarDateKey} />
+            <section className="charts-grid" aria-label="Solar and climate charts">
+              <SeasonalAnalemmaPanel now={now} location={location} />
+              <TemperatureHistoryPanel location={location} dateKey={solarDateKey} />
+              <SolarAnglesPanel now={now} location={location} />
+            </section>
             <article className="metric-card solar-times-card">
               <p className="card-label">DAYLIGHT WINDOW</p>
               <div className="solar-times">
@@ -945,15 +997,6 @@ function App() {
                   <strong className="sunset-time">{location.sunset}</strong>
                 </div>
               </div>
-              <p className="metric-detail">
-                {formatDate(tomorrow, {
-                  weekday: "short",
-                  month: "short",
-                  day: "numeric",
-                  timeZone: location.timeZone,
-                })}{" "}
-                · {location.daylight} of daylight
-              </p>
             </article>
             <article className="metric-card moon-card">
               <p className="card-label">MOON PHASE</p>
