@@ -3,7 +3,8 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { Line, OrbitControls } from "@react-three/drei";
 import * as Astronomy from "astronomy-engine";
 import type { Vector } from "astronomy-engine";
-import { Vector3 } from "three";
+import { Matrix4, Quaternion, Vector3 } from "three";
+import { StarField } from "./StarField";
 import { formatDate } from "../utils/time";
 
 const planets = [
@@ -58,8 +59,31 @@ const planets = [
 ] as const;
 
 const eclipticRotation = Astronomy.Rotation_EQJ_ECL();
+const planetaryStarFieldRadius = 120;
+const eclipticSceneRotation = eclipticRotation.rot;
+const planetaryStarFieldOrientation = new Quaternion().setFromRotationMatrix(
+  new Matrix4().set(
+    eclipticSceneRotation[0][0],
+    eclipticSceneRotation[0][1],
+    eclipticSceneRotation[0][2],
+    0,
+    eclipticSceneRotation[2][0],
+    eclipticSceneRotation[2][1],
+    eclipticSceneRotation[2][2],
+    0,
+    -eclipticSceneRotation[1][0],
+    -eclipticSceneRotation[1][1],
+    -eclipticSceneRotation[1][2],
+    0,
+    0,
+    0,
+    0,
+    1,
+  ),
+);
 const orbitSampleCount = 192;
 const topDownPolarAngle = 0.02;
+const topDownViewDistance = 6.2;
 const earthYearDays = 365.256;
 const seasonalAxisExtent = 12;
 const earthMinimumDistanceColor = "#56d9c4";
@@ -132,35 +156,24 @@ function PlanetMarkerProjection({
   return null;
 }
 
-function PlanetaryCameraPreset({
-  viewRange,
-  topDown,
-}: {
-  viewRange: "inner" | "full";
-  topDown: boolean;
-}) {
+function PlanetaryCameraPreset({ topDown }: { topDown: boolean }) {
   const { camera } = useThree();
 
   useEffect(() => {
     if (topDown) {
-      const distance = viewRange === "inner" ? 6.2 : 110;
       camera.up.set(0, 1, 0);
       camera.position.set(
         0,
-        distance * Math.cos(topDownPolarAngle),
-        distance * Math.sin(topDownPolarAngle),
+        topDownViewDistance * Math.cos(topDownPolarAngle),
+        topDownViewDistance * Math.sin(topDownPolarAngle),
       );
     } else {
       camera.up.set(0, 1, 0);
-      if (viewRange === "inner") {
-        camera.position.set(0, 2.5, 5.5);
-      } else {
-        camera.position.set(0, 38, 100);
-      }
+      camera.position.set(0, 2.5, 5.5);
     }
     camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix();
-  }, [camera, topDown, viewRange]);
+  }, [camera, topDown]);
 
   return null;
 }
@@ -255,12 +268,11 @@ export function PlanetaryPositionsPanel({
   now: Date;
   timeZone: string;
 }) {
-  const [viewRange, setViewRange] = useState<"inner" | "full">("full");
-  const [topDown, setTopDown] = useState(false);
+  const [topDown, setTopDown] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [showPlanetList, setShowPlanetList] = useState(false);
   const [showSeasonalAxes, setShowSeasonalAxes] = useState(true);
-  const [showEarthOrbitOnly, setShowEarthOrbitOnly] = useState(false);
+  const [showEarthOrbitOnly, setShowEarthOrbitOnly] = useState(true);
   const markerElements = useRef(new Map<string, HTMLDivElement>());
   const seasonalLabelElements = useRef(new Map<string, HTMLDivElement>());
   const orbitEpochYear = now.getUTCFullYear();
@@ -355,26 +367,6 @@ export function PlanetaryPositionsPanel({
             id="planetary-chart-settings"
             hidden={!showSettings}
           >
-            <div
-              className="earth-orientation-controls"
-              role="group"
-              aria-label="Planetary view range"
-            >
-              <button
-                type="button"
-                aria-pressed={viewRange === "inner"}
-                onClick={() => setViewRange("inner")}
-              >
-                Inner system
-              </button>
-              <button
-                type="button"
-                aria-pressed={viewRange === "full"}
-                onClick={() => setViewRange("full")}
-              >
-                Full system
-              </button>
-            </div>
             <button
               type="button"
               aria-pressed={topDown}
@@ -393,36 +385,29 @@ export function PlanetaryPositionsPanel({
               className="planetary-axis-toggle"
               type="button"
               aria-pressed={showSeasonalAxes}
-              disabled={viewRange !== "inner"}
-              title={
-                viewRange === "inner"
-                  ? undefined
-                  : "Seasonal axes are available in Inner System view."
-              }
               onClick={() => setShowSeasonalAxes((visible) => !visible)}
             >
               Axes & labels / {showSeasonalAxes ? "On" : "Off"}
             </button>
-            {viewRange === "full" && (
-              <span className="planetary-settings-note">
-                Available in Inner System view
-              </span>
-            )}
           </div>
         </div>
         <Canvas
-          camera={{ position: [0, 38, 100], fov: 45, near: 0.01, far: 250 }}
+          camera={{ position: [0, 6.2, 0.12], fov: 45, near: 0.01, far: 250 }}
           dpr={[1, 2]}
           gl={{ antialias: true }}
         >
           <color attach="background" args={["#050606"]} />
           <ambientLight intensity={0.8} />
-          <PlanetaryCameraPreset viewRange={viewRange} topDown={topDown} />
+          <StarField
+            orientation={planetaryStarFieldOrientation}
+            radius={planetaryStarFieldRadius}
+          />
+          <PlanetaryCameraPreset topDown={topDown} />
           <PlanetMarkerProjection
             positions={visiblePositions}
             markerElements={markerElements}
           />
-          {viewRange === "inner" && showSeasonalAxes && (
+          {showSeasonalAxes && (
             <SeasonalAxisLabelProjection
               labelElements={seasonalLabelElements}
             />
@@ -466,9 +451,7 @@ export function PlanetaryPositionsPanel({
               </mesh>
             </>
           )}
-          <SeasonalAxis
-            visible={viewRange === "inner" && showSeasonalAxes}
-          />
+          <SeasonalAxis visible={showSeasonalAxes} />
         </Canvas>
         {showEarthOrbitOnly && earthOrbit && (
           <div
@@ -491,7 +474,7 @@ export function PlanetaryPositionsPanel({
             </span>
           </div>
         )}
-        {viewRange === "inner" && showSeasonalAxes && (
+        {showSeasonalAxes && (
           <div className="planetary-seasonal-label-layer">
             {seasons.map((season) => (
               <div

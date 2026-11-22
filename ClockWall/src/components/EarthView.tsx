@@ -10,10 +10,10 @@ import { OrbitControls } from "@react-three/drei";
 import * as Astronomy from "astronomy-engine";
 import * as THREE from "three";
 import nightLightsUrl from "../assets/black-marble-2016-3km.jpg";
-import starCatalogData from "../data/hyg_bright_stars.json";
 import landGeoJson from "../data/ne_50m_land.geojson?raw";
 import lakeGeoJson from "../data/ne_50m_lakes.geojson?raw";
 import type { Location } from "../types";
+import { StarField } from "./StarField";
 import { toDateTimeLocalValue } from "../utils/time";
 
 type LandFeature = {
@@ -22,13 +22,8 @@ type LandFeature = {
     | { coordinates: number[][][][]; type: "MultiPolygon" };
 };
 
-type StarCatalog = {
-  stars: number[][];
-};
-
 type EarthOrientation = "shadow" | "north-pole";
 
-const starCatalog = starCatalogData as StarCatalog;
 const landFeatures = (
   JSON.parse(landGeoJson) as { features: LandFeature[] }
 ).features;
@@ -181,48 +176,6 @@ function getEarthOrbitAxes(sunDirection: THREE.Vector3, date: Date) {
   return { eclipticNorth, radialFromSun, orbitalTangent };
 }
 
-function createStarGeometry() {
-  const geometry = new THREE.BufferGeometry();
-  const positions = new Float32Array(starCatalog.stars.length * 3);
-  const colors = new Float32Array(starCatalog.stars.length * 3);
-
-  starCatalog.stars.forEach((star, index) => {
-    const [rightAscensionHours, declinationDegrees, magnitude, colorIndex] =
-      star;
-    if (
-      rightAscensionHours === undefined ||
-      declinationDegrees === undefined ||
-      magnitude === undefined ||
-      colorIndex === undefined
-    ) {
-      return;
-    }
-
-    const rightAscension = THREE.MathUtils.degToRad(rightAscensionHours * 15);
-    const declination = THREE.MathUtils.degToRad(declinationDegrees);
-    const cosDeclination = Math.cos(declination);
-    const warmth = THREE.MathUtils.clamp((colorIndex + 0.3) / 1.8, 0, 1);
-    const flux = Math.pow(10, -0.4 * (magnitude - 1));
-    const brightness = THREE.MathUtils.clamp(
-      0.06 + Math.sqrt(flux) * 0.38,
-      0.07,
-      1,
-    );
-    positions[index * 3] =
-      STARFIELD_RADIUS * cosDeclination * Math.cos(rightAscension);
-    positions[index * 3 + 1] =
-      STARFIELD_RADIUS * cosDeclination * Math.sin(rightAscension);
-    positions[index * 3 + 2] = STARFIELD_RADIUS * Math.sin(declination);
-    colors[index * 3] = (0.64 + warmth * 0.36) * brightness;
-    colors[index * 3 + 1] = (0.77 - warmth * 0.03) * brightness;
-    colors[index * 3 + 2] = (1 - warmth * 0.48) * brightness;
-  });
-
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-  return geometry;
-}
-
 function getLocationPosition(latitude: number, longitude: number) {
   const lat = THREE.MathUtils.degToRad(latitude);
   const lon = THREE.MathUtils.degToRad(longitude);
@@ -261,6 +214,30 @@ function createLatitudeGeometry(latitude: number) {
     );
   });
   return createTubeGeometry(points, true, 0.007);
+}
+
+function createLocationLatitudeGeometries(latitude: number) {
+  const latitudeRadians = THREE.MathUtils.degToRad(latitude);
+  const radius = EARTH_RADIUS + 0.021;
+  const parallelRadius = radius * Math.cos(latitudeRadians);
+  const vertical = radius * Math.sin(latitudeRadians);
+  const segmentCount = 80;
+  const segmentAngle = (Math.PI * 2) / segmentCount;
+  const dotAngle = segmentAngle * 0.38;
+
+  return Array.from({ length: segmentCount }, (_, index) => {
+    const longitude =
+      index * segmentAngle + (segmentAngle - dotAngle) / 2;
+    const points = Array.from({ length: 8 }, (_, pointIndex) => {
+      const angle = longitude + (pointIndex / 7) * dotAngle;
+      return new THREE.Vector3(
+        parallelRadius * Math.cos(angle),
+        vertical,
+        -parallelRadius * Math.sin(angle),
+      );
+    });
+    return createTubeGeometry(points, false, 0.006);
+  });
 }
 
 function createTerminatorGeometry(sunDirection: THREE.Vector3) {
@@ -356,7 +333,13 @@ function TubeGuide({
 
   return (
     <mesh geometry={geometry} renderOrder={1}>
-      <meshBasicMaterial color={color} toneMapped={false} />
+      <meshBasicMaterial
+        color={color}
+        transparent
+        opacity={0.6}
+        depthWrite={false}
+        toneMapped={false}
+      />
     </mesh>
   );
 }
@@ -378,41 +361,6 @@ function SubsolarPoint({ sunDirection }: { sunDirection: THREE.Vector3 }) {
       <torusGeometry args={[0.04, 0.007, 8, 32]} />
       <meshBasicMaterial color="#c4a1ff" toneMapped={false} />
     </mesh>
-  );
-}
-
-function StarField({
-  date,
-  earthRotation,
-}: {
-  date: Date;
-  earthRotation: THREE.Quaternion;
-}) {
-  const geometry = useMemo(() => createStarGeometry(), []);
-  const groupRef = useRef<THREE.Group>(null);
-  const skyOrientation = useMemo(
-    () => earthRotation.clone().multiply(getStarFieldRotation(date)),
-    [date, earthRotation],
-  );
-
-  useEffect(() => () => geometry.dispose(), [geometry]);
-  useFrame(({ camera }) => {
-    groupRef.current?.position.copy(camera.position);
-  });
-
-  return (
-    <group ref={groupRef} quaternion={skyOrientation}>
-      <points geometry={geometry} frustumCulled={false} renderOrder={-1}>
-        <pointsMaterial
-          size={1.6}
-          sizeAttenuation={false}
-          vertexColors
-          depthTest={false}
-          depthWrite={false}
-          toneMapped={false}
-        />
-      </points>
-    </group>
   );
 }
 
@@ -471,6 +419,21 @@ function LatitudeGuides() {
     <>
       {guides.map(({ color, geometry }, index) => (
         <TubeGuide key={index} geometry={geometry} color={color} />
+      ))}
+    </>
+  );
+}
+
+function LocationLatitudeGuide({ latitude }: { latitude: number }) {
+  const geometries = useMemo(
+    () => createLocationLatitudeGeometries(latitude),
+    [latitude],
+  );
+
+  return (
+    <>
+      {geometries.map((geometry, index) => (
+        <TubeGuide key={index} geometry={geometry} color="#ffffff" />
       ))}
     </>
   );
@@ -590,8 +553,8 @@ function EarthSurface({
             1.0 - smoothstep(0.0003, 0.0008, abs(vUv.x - 0.5)),
             1.0 - smoothstep(0.0003, 0.0008, abs(vUv.y - 0.5))
           );
-          float gridOpacity = max(longitudeGrid, latitudeGrid) * 0.28;
-          gridOpacity = max(gridOpacity, majorGrid * 0.62);
+          float gridOpacity = max(longitudeGrid, latitudeGrid) * 0.23;
+          gridOpacity = max(gridOpacity, majorGrid * 0.52);
           surfaceColor = mix(surfaceColor, vec3(0.7, 0.78, 0.72), gridOpacity);
         `
         : "";
@@ -739,6 +702,10 @@ export function EarthView({
     () => getEarthViewRotation(sunDirection, now, orientation),
     [now, orientation, sunDirection],
   );
+  const starFieldOrientation = useMemo(
+    () => earthRotation.clone().multiply(getStarFieldRotation(now)),
+    [earthRotation, now],
+  );
   useEffect(() => () => texture.dispose(), [texture]);
 
   const selectSeasonalPreset = (longitude: number) => {
@@ -774,7 +741,10 @@ export function EarthView({
             orientation={orientation}
             axisLocked={axisLocked}
           />
-          <StarField date={now} earthRotation={earthRotation} />
+          <StarField
+            orientation={starFieldOrientation}
+            radius={STARFIELD_RADIUS}
+          />
           <group quaternion={earthRotation}>
             <SunVisual sunDirection={sunDirection} />
             <mesh>
@@ -788,6 +758,7 @@ export function EarthView({
             {showLines && (
               <>
                 <LatitudeGuides />
+                <LocationLatitudeGuide latitude={location.latitudeValue} />
                 <SolarGuides sunDirection={sunDirection} />
                 <EarthOrbitGuide sunDirection={sunDirection} date={now} />
                 <mesh position={[0, 1.68, 0]}>
