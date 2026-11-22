@@ -19,12 +19,16 @@ button {
 .site-header {
   position: relative;
   z-index: 20;
-  display: flex !important;
-  align-items: center;
-  justify-content: space-between;
+  display: block !important;
   width: 100%;
   min-height: 58px;
   border-color: #3a3a3a !important;
+}
+.site-header-top-row {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
 }
 .brand {
   display: flex;
@@ -107,8 +111,9 @@ button {
   box-shadow: 0 20px 60px #000;
 }
 .menu-panel button {
+  display: flex;
   grid-column: span 2;
-  min-height: 168px;
+  min-height: 52px;
   align-items: center;
   justify-content: space-between;
   padding: 14px 12px;
@@ -134,7 +139,7 @@ button {
   display: grid;
   grid-template-columns: 112px minmax(230px, 1fr) minmax(230px, 1fr) 112px;
   align-items: stretch;
-  margin-top: 24px;
+  margin-top: 16px;
   border: 1px solid #555555;
   border-radius: 0;
   background:
@@ -144,6 +149,10 @@ button {
   background-size: 18px 18px;
   box-shadow: 0 18px 55px #0007;
   overflow: hidden;
+}
+.time-error {
+  color: var(--accent);
+  font-size: 8px;
 }
 .here-button {
   display: grid;
@@ -264,7 +273,8 @@ button {
   color: var(--accent);
 }
 .hero-copy h1,
-.planets-page h1 {
+.planets-page h1,
+.earth-page h1 {
   margin: 0;
   color: var(--paper);
   font-size: clamp(43px, 6vw, 78px);
@@ -273,7 +283,8 @@ button {
   letter-spacing: -0.1em;
 }
 .hero-copy h1 em,
-.planets-page h1 em {
+.planets-page h1 em,
+.earth-page h1 em {
   color: #aab4b8;
   font-family: Georgia, serif;
   font-weight: 400;
@@ -918,8 +929,8 @@ button {
 .map-card,
 .location-actions button,
 .location-actions select,
-.planet-orbit,
-.orbit {
+.planetary-chart,
+.planetary-orbit {
   border-radius: 0;
 }
 
@@ -1009,14 +1020,6 @@ button {
   stroke: #777777;
 }
 
-.earth {
-  background: #b8b8b8;
-}
-
-.mars {
-  background: #777777;
-}
-
 .coast {
   stroke: #777777;
 }
@@ -1029,83 +1032,216 @@ button {
   border-top-color: #444444;
 }
 .planets-page {
-  max-width: 900px;
-  min-height: 680px;
+  max-width: 1080px;
+  min-height: 0;
 }
 .planets-intro {
-  max-width: 360px;
-  margin: 34px 0;
+  max-width: 500px;
+  margin: 30px 0;
   color: #9ca5aa;
   font-size: 13px;
   line-height: 1.6;
 }
-.planet-orbit {
+.earth-page {
+  max-width: 1080px;
+  margin: 0 auto;
+}
+.earth-page-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 30px;
+  margin-bottom: 32px;
+}
+.earth-page-heading .kicker {
+  margin-bottom: 18px;
+}
+.earth-intro {
+  max-width: 370px;
+  margin: 0 0 5px;
+  color: #9ca5aa;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.earth-canvas-frame {
   position: relative;
+  height: min(62vw, 600px);
+  min-height: 360px;
+  overflow: hidden;
+  border: 1px solid #252b2e;
+  background: #000;
+}
+.earth-canvas-frame canvas {
+  display: block;
+}
+.earth-guide-legend {
+  position: absolute;
+  z-index: 1;
+  bottom: 14px;
+  left: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  gap: 7px 16px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 84%);
+  color: #24292c;
+  font-size: 12px;
+  line-height: 1.2;
+  pointer-events: none;
+}
+.earth-guide-legend span {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: min(70vw, 540px);
-  aspect-ratio: 1;
-  margin: 10px 0 35px;
-  border: 1px dashed #303a3b;
-  border-radius: 50%;
+  white-space: nowrap;
 }
-.orbit {
-  position: absolute;
-  border: 1px solid #263033;
-  border-radius: 50%;
-  transform: rotate(-25deg);
+.earth-guide-swatch {
+  width: 23px;
+  height: 3px;
+  margin-right: 7px;
+  border-radius: 2px;
+  background: currentColor;
 }
-.orbit-one {
-  width: 63%;
-  height: 30%;
+.earth-guide-swatch.terminator {
+  color: #fff000;
 }
-.orbit-two {
-  width: 96%;
-  height: 50%;
+.earth-guide-swatch.high-noon {
+  color: #ff332c;
 }
-.planet {
-  position: absolute;
+.earth-guide-swatch.midnight {
+  color: #385dff;
+}
+.earth-guide-swatch.equator {
+  color: #31f03b;
+}
+.earth-guide-swatch.tropics {
+  color: #00caca;
+}
+.earth-caption {
+  margin: 13px 0 0;
+  color: #78848b;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+}
+.planetary-chart {
+  padding: 18px;
+}
+.planetary-chart-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.planetary-chart-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.planet-view-button {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid #56636a;
+  color: #e5ecee;
+  background: #171d20;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+.planet-view-button:hover,
+.planet-view-button:focus-visible {
+  border-color: var(--accent);
+  color: var(--paper);
+}
+.planet-view-button:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+.planetary-orbit-chart {
   display: block;
-  border-radius: 50%;
+  width: 100%;
+  height: auto;
+  margin: 15px 0 8px;
+  overflow: visible;
 }
-.sun {
-  width: 58px;
-  height: 58px;
-  background: var(--accent);
-  box-shadow: 0 0 50px #ff512766;
+.planetary-crosshair {
+  fill: none;
+  stroke: #4b585e;
+  stroke-width: 0.9;
 }
-.earth {
-  width: 13px;
-  height: 13px;
-  background: #7aabb8;
-  transform: translate(125px, -37px);
+.planetary-orbit {
+  fill: none;
+  stroke: #56636a;
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
 }
-.mars {
+.planetary-sun-glow {
+  fill: #ff512733;
+}
+.planetary-sun {
+  fill: var(--accent);
+  filter: drop-shadow(0 0 5px #ff5127);
+}
+.planetary-marker {
+  stroke: #050505;
+  stroke-width: 1.5;
+}
+.planetary-axis-label {
+  fill: #aab6bb;
+  font-family: inherit;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+.planet-position-list {
+  margin-top: 12px;
+  border-top: 1px solid #333333;
+}
+.planet-position-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  text-align: left;
+}
+.planet-position-name {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #edf2f3;
+  font-size: 12px;
+}
+.planet-position-name i {
   width: 9px;
   height: 9px;
-  background: #bc7665;
-  transform: translate(-205px, 49px);
+  flex: 0 0 9px;
+  border-radius: 50%;
 }
-.coming-soon {
-  display: grid;
-  gap: 4px;
-  border-top: 1px solid #273034;
-  padding-top: 18px;
+.planet-position-table th,
+.planet-position-table td {
+  padding: 11px 12px;
+  border-bottom: 1px solid #303a3f;
 }
-.coming-soon span {
-  color: var(--accent);
+.planet-position-table thead th {
+  color: #aab6bb;
   font-size: 9px;
-  font-weight: bold;
-  letter-spacing: 0.15em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
 }
-.coming-soon strong {
-  font-family: Georgia, serif;
-  font-size: 25px;
+.planet-position-table tbody th {
   font-weight: 400;
 }
-.coming-soon small {
-  color: #78848b;
+.planet-position-table td {
+  color: #f2f5f6;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.planetary-caption {
+  margin-top: 14px;
+  color: #9aa7ad;
+  font-size: 8px;
+  letter-spacing: 0.04em;
 }
 @media (max-width: 900px) {
   .time-place-bar {
@@ -1186,5 +1322,67 @@ button {
   }
   .dashboard-footer span:last-child {
     display: none;
+  }
+  .planetary-chart {
+    padding: 13px;
+  }
+  .earth-canvas-frame {
+    height: 62vw;
+    min-height: 320px;
+  }
+  .planetary-chart-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .planetary-chart-title {
+    width: 100%;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .chart-card .planetary-orbit-chart {
+    height: min(78vw, 300px);
+    max-height: 300px;
+    overflow: hidden;
+  }
+  .planet-position-table th,
+  .planet-position-table td {
+    padding: 10px 5px;
+  }
+  .planet-position-table thead th {
+    font-size: 8px;
+    letter-spacing: 0.03em;
+  }
+  .planet-position-table td {
+    font-size: 11px;
+  }
+  .planet-position-name {
+    gap: 6px;
+    font-size: 11px;
+  }
+  .planet-position-name i {
+    width: 8px;
+    height: 8px;
+    flex-basis: 8px;
+  }
+  .planetary-caption {
+    line-height: 1.5;
+  }
+  .earth-page-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 17px;
+  }
+  .earth-page-heading .kicker {
+    margin-bottom: 15px;
+  }
+  .earth-intro {
+    max-width: 340px;
+    margin: 0;
+  }
+  .earth-canvas-frame {
+    height: 72vh;
+    min-height: 300px;
+    max-height: 480px;
   }
 }
