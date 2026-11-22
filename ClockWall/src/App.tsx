@@ -1,18 +1,33 @@
-import { useState } from "react";
-import { AppHeader, type Page } from "./components/AppHeader";
+import { useEffect, useState } from "react";
+import { AppHeader } from "./components/AppHeader";
 import { EarthView } from "./components/EarthView";
 import { TimePlaceBar } from "./components/TimePlaceBar";
 import { ClockPage } from "./pages/ClockPage";
 import { PlanetaryPage } from "./pages/PlanetaryPage";
 import { useClockData } from "./hooks/useClockData";
+import { getPageFromPath, pagePaths, type Page } from "./utils/routes";
 import "./App.css";
 
 function App() {
-  const [page, setPage] = useState<Page>("clock");
+  const [page, setPage] = useState<Page>(() =>
+    getPageFromPath(window.location.pathname),
+  );
   const [menuOpen, setMenuOpen] = useState(false);
   const clock = useClockData();
 
+  useEffect(() => {
+    const handlePopState = () => {
+      setPage(getPageFromPath(window.location.pathname));
+      setMenuOpen(false);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   const changePage = (nextPage: Page) => {
+    if (window.location.pathname !== pagePaths[nextPage]) {
+      window.history.pushState(null, "", pagePaths[nextPage]);
+    }
     setPage(nextPage);
     setMenuOpen(false);
   };
@@ -31,6 +46,7 @@ function App() {
           timeError={clock.timeError}
           timeIsLive={clock.timeIsLive}
           placeInput={clock.placeInput}
+          isCurrentLocation={clock.isCurrentLocation}
           localTime={clock.localTime}
           locationZone={clock.locationZone}
           timeZone={clock.location.timeZone}
@@ -56,8 +72,16 @@ function App() {
       ) : page === "planets" ? (
         <PlanetaryPage now={clock.now} timeZone={clock.location.timeZone} />
       ) : (
-        <div className="mx-auto max-w-7xl py-16">
-          <EarthView now={clock.now} />
+        <div className="mx-auto max-w-7xl py-8 sm:py-12">
+          <EarthView
+            now={clock.now}
+            location={clock.location}
+            timeInput={clock.timeInput}
+            timeError={clock.timeError}
+            timeZone={clock.location.timeZone}
+            onTimeInput={clock.setTimeFromInput}
+            onNow={clock.setNowToLive}
+          />
         </div>
       )}
     </main>

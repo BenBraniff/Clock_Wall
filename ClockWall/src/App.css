@@ -30,6 +30,33 @@ button {
   align-items: center;
   justify-content: space-between;
 }
+.page-breadcrumbs {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.page-breadcrumbs ol {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.page-breadcrumbs a {
+  color: inherit;
+  text-decoration: none;
+}
+.page-breadcrumbs a:hover,
+.page-breadcrumbs a:focus-visible {
+  color: var(--accent);
+}
+.page-breadcrumbs [aria-current="page"] {
+  color: var(--paper);
+}
 .brand {
   display: flex;
   align-items: center;
@@ -172,12 +199,13 @@ button {
 }
 .here-button:hover,
 .here-button:focus-visible {
-  color: var(--accent);
   background: #1a1a1a;
   outline: none;
 }
-.here-button .crosshair {
+.here-button.active {
   color: var(--accent);
+}
+.here-button .crosshair {
   font-size: 23px;
   line-height: 1;
 }
@@ -272,9 +300,7 @@ button {
   margin: 0 0 22px;
   color: var(--accent);
 }
-.hero-copy h1,
-.planets-page h1,
-.earth-page h1 {
+.hero-copy h1 {
   margin: 0;
   color: var(--paper);
   font-size: clamp(43px, 6vw, 78px);
@@ -282,9 +308,7 @@ button {
   line-height: 0.93;
   letter-spacing: -0.1em;
 }
-.hero-copy h1 em,
-.planets-page h1 em,
-.earth-page h1 em {
+.hero-copy h1 em {
   color: #aab4b8;
   font-family: Georgia, serif;
   font-weight: 400;
@@ -1035,33 +1059,9 @@ button {
   max-width: 1080px;
   min-height: 0;
 }
-.planets-intro {
-  max-width: 500px;
-  margin: 30px 0;
-  color: #9ca5aa;
-  font-size: 13px;
-  line-height: 1.6;
-}
 .earth-page {
   max-width: 1080px;
   margin: 0 auto;
-}
-.earth-page-heading {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 30px;
-  margin-bottom: 32px;
-}
-.earth-page-heading .kicker {
-  margin-bottom: 18px;
-}
-.earth-intro {
-  max-width: 370px;
-  margin: 0 0 5px;
-  color: #9ca5aa;
-  font-size: 13px;
-  line-height: 1.7;
 }
 .earth-canvas-frame {
   position: relative;
@@ -1074,32 +1074,171 @@ button {
 .earth-canvas-frame canvas {
   display: block;
 }
+.earth-view-controls {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.earth-date-panel {
+  display: grid;
+  width: min(260px, calc(100vw - 56px));
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid #666666;
+  background: #101010;
+  box-shadow: 0 20px 60px #000;
+}
+.earth-date-panel[hidden] {
+  display: none;
+}
+.earth-date-panel label {
+  display: grid;
+  gap: 7px;
+}
+.earth-date-panel label span {
+  color: var(--accent);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+.earth-date-panel input {
+  width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 7px;
+  border: 1px solid var(--line);
+  color: var(--paper);
+  background: #151515;
+  color-scheme: dark;
+  font-family: inherit;
+  font-size: 10px;
+}
+.earth-date-panel input:focus-visible {
+  border-color: var(--accent);
+  outline: 1px solid var(--accent);
+}
+.earth-date-presets {
+  display: grid;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid #3a3a3a;
+  background: #101010;
+}
+.earth-time-error {
+  margin: 0;
+  color: var(--accent);
+  font-size: 9px;
+  line-height: 1.4;
+  text-align: left;
+}
+.earth-view-controls button,
+.earth-overlay-toggle {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  background: rgb(17 17 17 / 92%);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.earth-view-settings {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.earth-view-settings[hidden],
+.earth-guide-legend-content[hidden] {
+  display: none;
+}
+.earth-orientation-controls {
+  display: flex;
+  border: 1px solid var(--line);
+  background: rgb(17 17 17 / 92%);
+}
+.earth-orientation-controls button {
+  border: 0;
+  background: transparent;
+}
+.earth-orientation-controls button + button {
+  border-left: 1px solid var(--line);
+}
+.earth-view-controls button[aria-pressed="true"] {
+  color: var(--paper);
+}
+.earth-view-controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.earth-view-controls button:hover,
+.earth-view-controls button:focus-visible,
+.earth-overlay-toggle:hover,
+.earth-overlay-toggle:focus-visible {
+  border-color: var(--accent);
+  color: var(--paper);
+  outline: none;
+}
+.earth-date-presets button {
+  width: 100%;
+  min-height: 34px;
+  justify-content: flex-start;
+  border: 0;
+  color: #aab4b8;
+  background: transparent;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+.earth-date-presets button:hover,
+.earth-date-presets button:focus-visible {
+  color: var(--paper);
+  background: #273136;
+}
+.earth-view-controls button.earth-date-now {
+  width: 100%;
+  color: var(--accent);
+}
 .earth-guide-legend {
   position: absolute;
   z-index: 1;
-  bottom: 14px;
-  left: 14px;
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.earth-guide-legend-content {
   display: grid;
   grid-template-columns: repeat(2, max-content);
-  gap: 7px 16px;
-  padding: 10px 12px;
-  border-radius: 6px;
-  background: rgb(255 255 255 / 84%);
-  color: #24292c;
-  font-size: 12px;
-  line-height: 1.2;
-  pointer-events: none;
+  gap: 5px 12px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  background: rgb(17 17 17 / 92%);
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.3;
 }
-.earth-guide-legend span {
+.earth-guide-legend-content span {
   display: flex;
   align-items: center;
   white-space: nowrap;
 }
 .earth-guide-swatch {
-  width: 23px;
-  height: 3px;
-  margin-right: 7px;
-  border-radius: 2px;
+  width: 18px;
+  height: 2px;
+  margin-right: 6px;
   background: currentColor;
 }
 .earth-guide-swatch.terminator {
@@ -1107,6 +1246,9 @@ button {
 }
 .earth-guide-swatch.high-noon {
   color: #ff332c;
+}
+.earth-guide-swatch.subsolar-equator-circle {
+  color: #c4a1ff;
 }
 .earth-guide-swatch.midnight {
   color: #385dff;
@@ -1117,12 +1259,50 @@ button {
 .earth-guide-swatch.tropics {
   color: #00caca;
 }
+.earth-guide-swatch.earth-orbit {
+  color: #ffad4b;
+}
+.earth-guide-swatch.city-lights {
+  width: 7px;
+  height: 7px;
+  margin-right: 11px;
+  border-radius: 50%;
+  background: #ffcd72;
+  box-shadow: 0 0 7px #ff9e38;
+}
+.earth-guide-swatch.star-field {
+  width: 5px;
+  height: 5px;
+  margin-right: 13px;
+  border-radius: 50%;
+  background: #d7e5ff;
+  box-shadow: 0 0 5px #8fbaff;
+}
+.earth-guide-swatch.sun {
+  width: 7px;
+  height: 7px;
+  margin-right: 11px;
+  border-radius: 50%;
+  background: #fff2b0;
+  box-shadow: 0 0 7px #ffae37;
+}
+.earth-guide-swatch.location {
+  width: 7px;
+  height: 7px;
+  margin-right: 11px;
+  border-radius: 50%;
+  background: #fff4b0;
+  box-shadow: 0 0 7px #ffca42;
+}
 .earth-caption {
   margin: 13px 0 0;
   color: #78848b;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.13em;
+}
+.earth-caption a {
+  color: inherit;
 }
 .planetary-chart {
   padding: 18px;
@@ -1138,61 +1318,170 @@ button {
   align-items: center;
   gap: 14px;
 }
-.planet-view-button {
-  flex: 0 0 auto;
-  min-height: 32px;
-  padding: 0 10px;
-  border: 1px solid #56636a;
-  color: #e5ecee;
-  background: #171d20;
+.planetary-orbit-chart {
+  position: relative;
+  width: 100%;
+  height: min(56vw, 500px);
+  min-height: 360px;
+  margin: 15px 0 8px;
+  overflow: hidden;
+  background: #050606;
+  touch-action: none;
+}
+.planetary-orbit-chart canvas {
+  display: block;
+}
+.planetary-position-overlay {
+  position: absolute;
+  z-index: 16777274;
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.planetary-chart-settings {
+  z-index: 16777275;
+}
+.planetary-settings-note {
+  color: var(--muted);
+  font-size: 8px;
+  letter-spacing: 0.04em;
+}
+.planetary-position-overlay-content {
+  width: min(430px, calc(100vw - 56px));
+  max-height: 220px;
+  margin-top: 0;
+  overflow: auto;
+  border: 1px solid var(--line);
+  background: rgb(17 17 17 / 94%);
+  box-shadow: 0 20px 60px #000;
+}
+.planetary-position-overlay-content[hidden] {
+  display: none;
+}
+.planetary-seasonal-label-layer {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  pointer-events: none;
+}
+.planetary-seasonal-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: #d8c88f;
+  font-family: inherit;
   font-size: 8px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  cursor: pointer;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
-.planet-view-button:hover,
-.planet-view-button:focus-visible {
-  border-color: var(--accent);
-  color: var(--paper);
+.planetary-orbit-extrema-legend {
+  position: absolute;
+  z-index: 4;
+  right: 12px;
+  bottom: 12px;
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  color: var(--text);
+  background: rgb(5 6 6 / 90%);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  pointer-events: none;
 }
-.planet-view-button:focus-visible {
-  outline: 1px solid var(--accent);
-  outline-offset: 2px;
+.planetary-orbit-extrema-legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
 }
-.planetary-orbit-chart {
+.planetary-orbit-extrema-legend i {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+}
+.planetary-orbit-extrema-minimum {
+  background: #56d9c4;
+  box-shadow: 0 0 6px #56d9c4;
+}
+.planetary-orbit-extrema-maximum {
+  background: #ffb65c;
+  box-shadow: 0 0 6px #ffb65c;
+}
+.planetary-marker-layer {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+}
+.planetary-marker-dot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 9px;
+  height: 9px;
+  pointer-events: none;
+}
+.planetary-sun-overlay {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.planetary-sun-core {
   display: block;
-  width: 100%;
-  height: auto;
-  margin: 15px 0 8px;
-  overflow: visible;
+  width: 12px;
+  height: 12px;
+  border: 1px solid #ff9a79;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 5px 2px #ff5127c9;
 }
-.planetary-crosshair {
-  fill: none;
-  stroke: #4b585e;
-  stroke-width: 0.9;
-}
-.planetary-orbit {
-  fill: none;
-  stroke: #56636a;
-  stroke-width: 1;
-  stroke-dasharray: 2 4;
-}
-.planetary-sun-glow {
-  fill: #ff512733;
-}
-.planetary-sun {
-  fill: var(--accent);
-  filter: drop-shadow(0 0 5px #ff5127);
-}
-.planetary-marker {
-  stroke: #050505;
-  stroke-width: 1.5;
-}
-.planetary-axis-label {
-  fill: #aab6bb;
-  font-family: inherit;
+.planetary-sun-label {
+  position: absolute;
+  top: 7px;
+  left: 10px;
+  padding: 2px 4px;
+  border-radius: 2px;
+  color: #ffb59f;
+  background: rgb(5 6 6 / 88%);
   font-size: 9px;
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+.planetary-marker-dot-core {
+  display: block;
+  width: 9px;
+  height: 9px;
+  border: 1px solid #050505;
+  border-radius: 50%;
+  box-shadow: 0 0 4px currentColor;
+}
+.planetary-planet-label {
+  position: absolute;
+  top: -5px;
+  left: 10px;
+  z-index: 1;
+  padding: 2px 4px;
+  border-radius: 2px;
+  color: #e5ecee;
+  background: rgb(5 6 6 / 88%);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 .planet-position-list {
   margin-top: 12px;
@@ -1268,23 +1557,49 @@ button {
 }
 @media (max-width: 560px) {
   .time-place-bar {
-    grid-template-columns: 112px minmax(0, 1fr) 112px;
+    grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr) 40px;
+  }
+  .search-field {
+    min-height: 58px;
+    gap: 4px;
+    padding: 6px 7px;
+  }
+  .search-field > span {
+    font-size: 7px;
+  }
+  .search-field input,
+  .search-field select {
+    font-size: 10px;
   }
   .time-field {
     grid-column: 2;
+    grid-row: 1;
   }
   .place-field {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    border-top: 1px solid #3b474a;
-  }
-  .here-button {
-    grid-column: 1;
-    grid-row: 1;
-  }
-  .now-button {
     grid-column: 3;
     grid-row: 1;
+  }
+  .here-button {
+    grid-column: 4;
+    grid-row: 1;
+    min-height: 58px;
+    gap: 3px;
+    padding: 4px;
+    border-right: 0;
+    border-left: 1px solid #3b474a;
+  }
+  .here-button .crosshair {
+    font-size: 18px;
+  }
+  .now-button {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    min-height: 58px;
+    gap: 3px;
+    padding: 4px;
+    border-left: 0;
+    border-right: 1px solid #3b474a;
   }
   .hero-grid {
     display: block;
@@ -1341,9 +1656,8 @@ button {
     gap: 9px;
   }
   .chart-card .planetary-orbit-chart {
-    height: min(78vw, 300px);
-    max-height: 300px;
-    overflow: hidden;
+    height: min(78vw, 340px);
+    min-height: 260px;
   }
   .planet-position-table th,
   .planet-position-table td {
@@ -1367,18 +1681,6 @@ button {
   }
   .planetary-caption {
     line-height: 1.5;
-  }
-  .earth-page-heading {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 17px;
-  }
-  .earth-page-heading .kicker {
-    margin-bottom: 15px;
-  }
-  .earth-intro {
-    max-width: 340px;
-    margin: 0;
   }
   .earth-canvas-frame {
     height: 72vh;

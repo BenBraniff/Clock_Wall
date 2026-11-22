@@ -5,6 +5,7 @@ export function TimePlaceBar({
   timeError,
   timeIsLive,
   placeInput,
+  isCurrentLocation,
   localTime,
   locationZone,
   timeZone,
@@ -18,6 +19,7 @@ export function TimePlaceBar({
   timeError: string | null;
   timeIsLive: boolean;
   placeInput: string;
+  isCurrentLocation: boolean;
   localTime: string;
   locationZone: string | undefined;
   timeZone: string;
@@ -90,8 +92,9 @@ export function TimePlaceBar({
         </select>
       </label>
       <button
-        className="here-button"
+        className={`here-button ${isCurrentLocation ? "active" : ""}`}
         type="button"
+        aria-pressed={isCurrentLocation}
         onClick={onActivateCurrentLocation}
       >
         <span className="crosshair" aria-hidden="true">

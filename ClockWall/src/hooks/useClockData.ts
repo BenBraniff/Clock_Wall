@@ -21,9 +21,11 @@ export function useClockData() {
   const [timeError, setTimeError] = useState<string | null>(null);
   const [timeIsLive, setTimeIsLive] = useState(true);
   const [placeInput, setPlaceInput] = useState("Detecting location...");
+  const [isCurrentLocation, setIsCurrentLocation] = useState(false);
 
   const applyCurrentLocation = useCallback(
     (coords: { latitude: number; longitude: number }) => {
+      setIsCurrentLocation(true);
       setLocation({
         ...locations[0],
         name: "Locating...",
@@ -63,6 +65,7 @@ export function useClockData() {
 
   const activateCurrentLocation = () => {
     setTimeError(null);
+    setIsCurrentLocation(false);
     setPlaceInput("Locating...");
     if (!navigator.geolocation) {
       setPlaceInput(locations[0].name);
@@ -259,6 +262,7 @@ export function useClockData() {
     }
     const selected = locations.find((item) => item.name === selectedName);
     if (selected) {
+      setIsCurrentLocation(false);
       setLocation(selected);
       setManualTimeInput(toDateTimeLocalValue(now, selected.timeZone));
       setTimeError(null);
@@ -275,6 +279,7 @@ export function useClockData() {
     timeError,
     timeIsLive,
     placeInput,
+    isCurrentLocation,
     location,
     solarDateKey,
     moon,

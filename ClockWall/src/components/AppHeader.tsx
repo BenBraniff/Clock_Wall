@@ -1,6 +1,5 @@
-import type { ReactNode } from "react";
-
-export type Page = "clock" | "planets" | "earth";
+import type { MouseEvent, ReactNode } from "react";
+import { pagePaths, type Page } from "../utils/routes";
 
 export function AppHeader({
   children,
@@ -17,6 +16,20 @@ export function AppHeader({
   onPageChange: (page: Page) => void;
   onMenuToggle: () => void;
 }) {
+  const navigateToClock = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+    event.preventDefault();
+    onPageChange("clock");
+  };
+
   return (
     <header className="site-header mx-auto max-w-7xl border-b border-white/10 pb-5">
       <div className="site-header-top-row">
@@ -69,6 +82,29 @@ export function AppHeader({
         )}
       </div>
       {children}
+      <nav className="page-breadcrumbs" aria-label="Breadcrumb">
+        <ol>
+          <li>
+            {page === "clock" ? (
+              <span aria-current="page">ClockWall</span>
+            ) : (
+              <a href={pagePaths.clock} onClick={navigateToClock}>
+                ClockWall
+              </a>
+            )}
+          </li>
+          {page !== "clock" && (
+            <>
+              <li aria-hidden="true">/</li>
+              <li>
+                <span aria-current="page">
+                  {page === "planets" ? "Planetary positions" : "Earth view"}
+                </span>
+              </li>
+            </>
+          )}
+        </ol>
+      </nav>
     </header>
   );
 }
