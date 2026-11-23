@@ -1373,6 +1373,9 @@ button {
   letter-spacing: 0.04em;
   white-space: nowrap;
 }
+.planetary-galactic-plane-label {
+  color: #a8e7ff;
+}
 .planetary-orbit-extrema-legend {
   position: absolute;
   z-index: 4;

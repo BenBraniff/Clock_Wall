@@ -81,6 +81,34 @@ const planetaryStarFieldOrientation = new Quaternion().setFromRotationMatrix(
     1,
   ),
 );
+const galacticPoleRightAscension = (192.85948 * Math.PI) / 180;
+const galacticPoleDeclination = (27.12825 * Math.PI) / 180;
+const cosGalacticPoleRightAscension = Math.cos(galacticPoleRightAscension);
+const sinGalacticPoleRightAscension = Math.sin(galacticPoleRightAscension);
+const cosGalacticPoleDeclination = Math.cos(galacticPoleDeclination);
+const sinGalacticPoleDeclination = Math.sin(galacticPoleDeclination);
+const galacticPlanePoints = Array.from(
+  { length: 361 },
+  (_, index): [number, number, number] => {
+    const angle = (index / 360) * Math.PI * 2;
+    const cosAngle = Math.cos(angle);
+    const sinAngle = Math.sin(angle);
+
+    return [
+      planetaryStarFieldRadius *
+        (-sinGalacticPoleRightAscension * cosAngle -
+          sinGalacticPoleDeclination *
+            cosGalacticPoleRightAscension *
+            sinAngle),
+      planetaryStarFieldRadius *
+        (cosGalacticPoleRightAscension * cosAngle -
+          sinGalacticPoleDeclination *
+            sinGalacticPoleRightAscension *
+            sinAngle),
+      planetaryStarFieldRadius * cosGalacticPoleDeclination * sinAngle,
+    ];
+  },
+);
 const orbitSampleCount = 192;
 const topDownPolarAngle = 0.02;
 const topDownViewDistance = 6.2;
@@ -109,6 +137,25 @@ const seasons = [
   { name: "FALL EQUINOX", longitude: 0 },
   { name: "WINTER SOLSTICE", longitude: 90 },
 ] as const;
+const galacticPlaneLabel = "GALACTIC PLANE";
+const galacticPlaneNormal = new Vector3(
+  cosGalacticPoleDeclination * cosGalacticPoleRightAscension,
+  cosGalacticPoleDeclination * sinGalacticPoleRightAscension,
+  sinGalacticPoleDeclination,
+).applyQuaternion(planetaryStarFieldOrientation);
+const chartLabelDirections = [
+  ...seasons.map((season) => {
+    const angle = season.longitude * (Math.PI / 180);
+    return {
+      name: season.name,
+      direction: new Vector3(Math.cos(angle), 0, -Math.sin(angle)),
+      fallbackDirection: [Math.cos(angle), -Math.sin(angle)] as [
+        number,
+        number,
+      ],
+    };
+  }),
+];
 
 type PlanetPosition = (typeof planets)[number] & {
   vector: Vector;
@@ -207,7 +254,32 @@ function SeasonalAxis({ visible }: { visible: boolean }) {
   );
 }
 
-function SeasonalAxisLabelProjection({
+function GalacticPlane({ visible }: { visible: boolean }) {
+  if (!visible) return null;
+
+  return (
+    <>
+      <Line
+        points={galacticPlanePoints}
+        color="#79d7ff"
+        lineWidth={5}
+        transparent
+        opacity={0.08}
+        renderOrder={1}
+      />
+      <Line
+        points={galacticPlanePoints}
+        color="#a8e7ff"
+        lineWidth={1.25}
+        transparent
+        opacity={0.6}
+        renderOrder={2}
+      />
+    </>
+  );
+}
+
+function ChartLabelProjection({
   labelElements,
 }: {
   labelElements: { current: Map<string, HTMLDivElement> };
@@ -216,22 +288,26 @@ function SeasonalAxisLabelProjection({
 
   useEffect(() => {
     const screenDirection = new Vector3();
+    const planeNormalInCamera = new Vector3();
+    const linePointInCamera = new Vector3();
+    const lineTangentInCamera = new Vector3();
+    const projectedLinePoint = new Vector3();
+    const worldLinePoint = new Vector3();
+    const cameraForward = new Vector3(0, 0, -1);
     let frameId: number;
     const updateLabelPositions = () => {
       camera.updateMatrixWorld();
-      for (const season of seasons) {
-        const element = labelElements.current.get(season.name);
+      for (const label of chartLabelDirections) {
+        const element = labelElements.current.get(label.name);
         if (!element) continue;
 
-        const angle = season.longitude * (Math.PI / 180);
         screenDirection
-          .set(Math.cos(angle), 0, -Math.sin(angle))
+          .copy(label.direction)
           .transformDirection(camera.matrixWorldInverse);
         let directionX = screenDirection.x;
         let directionY = -screenDirection.y;
         if (Math.hypot(directionX, directionY) < 0.001) {
-          directionX = Math.cos(angle);
-          directionY = -Math.sin(angle);
+          [directionX, directionY] = label.fallbackDirection;
         }
         const width = element.offsetWidth;
         const height = element.offsetHeight;
@@ -251,6 +327,76 @@ function SeasonalAxisLabelProjection({
           size.height / 2 + directionY * edgeScale;
         element.style.transform = `translate3d(${labelX}px, ${labelY}px, 0) translate(-50%, -50%)`;
       }
+
+      const galacticLabel = labelElements.current.get(galacticPlaneLabel);
+      if (galacticLabel) {
+        planeNormalInCamera
+          .copy(galacticPlaneNormal)
+          .transformDirection(camera.matrixWorldInverse);
+        linePointInCamera
+          .copy(cameraForward)
+          .addScaledVector(
+            planeNormalInCamera,
+            -cameraForward.dot(planeNormalInCamera),
+          );
+        if (linePointInCamera.lengthSq() < 0.000001) {
+          galacticLabel.style.display = "none";
+        } else {
+          linePointInCamera.normalize();
+          lineTangentInCamera
+            .crossVectors(planeNormalInCamera, linePointInCamera)
+            .normalize();
+          worldLinePoint
+            .copy(linePointInCamera)
+            .transformDirection(camera.matrixWorld)
+            .multiplyScalar(planetaryStarFieldRadius)
+            .add(camera.position);
+          projectedLinePoint.copy(worldLinePoint).project(camera);
+
+          const pointX = ((projectedLinePoint.x + 1) / 2) * size.width;
+          const pointY = ((1 - projectedLinePoint.y) / 2) * size.height;
+          const directionX = lineTangentInCamera.x;
+          const directionY = -lineTangentInCamera.y;
+          const minX = galacticLabel.offsetWidth / 2 + 8;
+          const maxX = size.width - minX;
+          const minY = galacticLabel.offsetHeight / 2 + 8;
+          const maxY = size.height - minY;
+          const intersections: [number, number][] = [];
+
+          if (Math.abs(directionX) > 0.001) {
+            for (const x of [minX, maxX]) {
+              const distance = (x - pointX) / directionX;
+              const y = pointY + distance * directionY;
+              if (y >= minY && y <= maxY) intersections.push([x, y]);
+            }
+          }
+          if (Math.abs(directionY) > 0.001) {
+            for (const y of [minY, maxY]) {
+              const distance = (y - pointY) / directionY;
+              const x = pointX + distance * directionX;
+              if (x >= minX && x <= maxX) intersections.push([x, y]);
+            }
+          }
+
+          const labelPosition = intersections.reduce<
+            [number, number] | undefined
+          >((farthest, point) => {
+            if (!farthest) return point;
+            const pointDistance =
+              (point[0] - pointX) ** 2 + (point[1] - pointY) ** 2;
+            const farthestDistance =
+              (farthest[0] - pointX) ** 2 +
+              (farthest[1] - pointY) ** 2;
+            return pointDistance > farthestDistance ? point : farthest;
+          }, undefined);
+
+          galacticLabel.style.display = labelPosition ? "block" : "none";
+          if (labelPosition) {
+            galacticLabel.style.transform = `translate3d(${labelPosition[0]}px, ${labelPosition[1]}px, 0) translate(-50%, -50%)`;
+          }
+        }
+      }
+
       frameId = requestAnimationFrame(updateLabelPositions);
     };
 
@@ -274,7 +420,7 @@ export function PlanetaryPositionsPanel({
   const [showSeasonalAxes, setShowSeasonalAxes] = useState(true);
   const [showEarthOrbitOnly, setShowEarthOrbitOnly] = useState(true);
   const markerElements = useRef(new Map<string, HTMLDivElement>());
-  const seasonalLabelElements = useRef(new Map<string, HTMLDivElement>());
+  const chartLabelElements = useRef(new Map<string, HTMLDivElement>());
   const orbitEpochYear = now.getUTCFullYear();
   const positions = useMemo(
     () =>
@@ -350,7 +496,7 @@ export function PlanetaryPositionsPanel({
       <div
         className="planetary-orbit-chart"
         role="img"
-        aria-label={`Interactive three-dimensional heliocentric positions of the eight planets at ${formattedSimulationTime}`}
+        aria-label={`Interactive three-dimensional heliocentric positions of the eight planets, with a toggleable Milky Way galactic-plane guide, at ${formattedSimulationTime}`}
       >
         <div className="earth-view-controls planetary-chart-settings">
           <button
@@ -401,15 +547,17 @@ export function PlanetaryPositionsPanel({
           <StarField
             orientation={planetaryStarFieldOrientation}
             radius={planetaryStarFieldRadius}
-          />
+          >
+            <GalacticPlane visible={showSeasonalAxes} />
+          </StarField>
           <PlanetaryCameraPreset topDown={topDown} />
           <PlanetMarkerProjection
             positions={visiblePositions}
             markerElements={markerElements}
           />
           {showSeasonalAxes && (
-            <SeasonalAxisLabelProjection
-              labelElements={seasonalLabelElements}
+            <ChartLabelProjection
+              labelElements={chartLabelElements}
             />
           )}
           <OrbitControls
@@ -481,16 +629,25 @@ export function PlanetaryPositionsPanel({
                 key={season.name}
                 className="planetary-seasonal-label"
                 ref={(element) => {
-                  if (element) {
-                    seasonalLabelElements.current.set(season.name, element);
-                  } else {
-                    seasonalLabelElements.current.delete(season.name);
-                  }
+                  if (element) chartLabelElements.current.set(season.name, element);
+                  else chartLabelElements.current.delete(season.name);
                 }}
               >
                 {season.name}
               </div>
             ))}
+            <div
+              className="planetary-seasonal-label planetary-galactic-plane-label"
+              ref={(element) => {
+                if (element) {
+                  chartLabelElements.current.set(galacticPlaneLabel, element);
+                } else {
+                  chartLabelElements.current.delete(galacticPlaneLabel);
+                }
+              }}
+            >
+              {galacticPlaneLabel}
+            </div>
           </div>
         )}
         <div className="planetary-marker-layer">
@@ -562,7 +719,8 @@ export function PlanetaryPositionsPanel({
       </div>
       <div className="planetary-caption">
         Positions and orbit paths calculated with Astronomy Engine · True AU
-        scale · Drag to orbit, scroll to zoom · {formattedSimulationTime}
+        scale · Blue line: Milky Way galactic plane · Drag to orbit, scroll
+        to zoom · {formattedSimulationTime}
       </div>
     </article>
   );

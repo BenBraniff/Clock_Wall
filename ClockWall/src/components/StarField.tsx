@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import starCatalogData from "../data/hyg_bright_stars.json";
@@ -54,9 +54,11 @@ function createStarGeometry(radius: number) {
 export function StarField({
   orientation,
   radius = 1000,
+  children,
 }: {
   orientation: THREE.Quaternion;
   radius?: number;
+  children?: ReactNode;
 }) {
   const geometry = useMemo(() => createStarGeometry(radius), [radius]);
   const groupRef = useRef<THREE.Group>(null);
@@ -68,6 +70,7 @@ export function StarField({
 
   return (
     <group ref={groupRef} quaternion={orientation}>
+      {children}
       <points geometry={geometry} frustumCulled={false} renderOrder={-1}>
         <pointsMaterial
           size={1.6}
